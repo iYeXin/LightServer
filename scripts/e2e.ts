@@ -48,7 +48,7 @@ export default async function init(ctx: any) {
 export default async function init(ctx: any) {
   const router = ctx.util.createRouter();
   router.get("/", async () => new Response("User root sub=" + ctx.subPath));
-  router.get("/q", async (req: Request) => new Response("q=" + JSON.stringify(router.query(req))));
+  router.query("/find", async (req: Request) => new Response("found:" + await req.text()));
   router.get("/:id", async (_req: Request, p: any) => new Response("User " + p.id));
   ctx.onRequest(async (req: Request) => router.handle(req));
 }
@@ -151,8 +151,8 @@ export default async function init(ctx: any) {
     r = await get("/api/user/42/extra");
     check("dynamic unmatched subpath is 404", r.status === 404);
 
-    r = await get("/api/user/q?a=1&a=2&b=x");
-    check("router query passthrough", r.status === 200 && (await r.text()) === 'q={"a":["1","2"],"b":"x"}');
+    r = await fetch(BASE + "/api/user/find", { method: "QUERY", body: "qbody" });
+    check("QUERY method with body", r.status === 200 && (await r.text()) === "found:qbody");
 
     r = await fetch(BASE + "/old", { redirect: "manual" });
     check("exact redirect", r.status === 301 && r.headers.get("location") === "/new");

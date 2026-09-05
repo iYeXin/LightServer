@@ -41,14 +41,15 @@ describe("createRouter", () => {
     expect(await (await r.handle(new Request("http://x/x", { method: "DELETE" }))).text()).toBe("m=DELETE");
   });
 
-  test("query() parses search params, repeats become arrays", () => {
+  test("QUERY method routes register and match", async () => {
     const r = createRouter(fakeCtx(""));
-    expect(r.query(new Request("http://x/s?name=Bun&n=1&n=2&empty=&enc=%E4%B8%AD"))).toEqual({
-      name: "Bun",
-      n: ["1", "2"],
-      empty: "",
-      enc: "中",
-    });
-    expect(r.query(new Request("http://x/s"))).toEqual({});
+    r.query("/find", async (req) => new Response(`found:${await req.text()}`));
+    r.get("/find", async () => new Response("get-find"));
+    const q = await r.handle(new Request("http://x/find", { method: "QUERY", body: "body-q" }));
+    expect(await q.text()).toBe("found:body-q");
+    const g = await r.handle(new Request("http://x/find"));
+    expect(await g.text()).toBe("get-find");
+    const miss = await r.handle(new Request("http://x/find", { method: "POST" }));
+    expect(miss.status).toBe(404);
   });
 });

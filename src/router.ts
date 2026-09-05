@@ -95,22 +95,6 @@ export function createRouter(boundCtx?: Pick<ServiceContext, "subPath">): Router
     return new Response("not found", { status: 404 });
   }
 
-  function query(req: Request): Record<string, string | string[]> {
-    let search = "";
-    try {
-      search = new URL(req.url).search;
-    } catch {
-      return {};
-    }
-    const params = new URLSearchParams(search);
-    const out: Record<string, string | string[]> = {};
-    for (const key of new Set(params.keys())) {
-      const all = params.getAll(key);
-      out[key] = all.length > 1 ? all : (all[0] ?? "");
-    }
-    return out;
-  }
-
   const api: Router = {
     get: (p, h) => add("GET", p, h),
     post: (p, h) => add("POST", p, h),
@@ -119,9 +103,9 @@ export function createRouter(boundCtx?: Pick<ServiceContext, "subPath">): Router
     patch: (p, h) => add("PATCH", p, h),
     options: (p, h) => add("OPTIONS", p, h),
     head: (p, h) => add("HEAD", p, h),
+    query: (p, h) => add("QUERY", p, h),
     all: (p, h) => add("ALL", p, h),
     handle,
-    query,
   };
   return api;
 }

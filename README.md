@@ -153,11 +153,10 @@ import type { ServiceContext } from '@iyexin/lightserver';
 `ctx.util.createRouter()` 创建的路由器绑定创建时的 `ctx`：有 `subPath` 时按子路径匹配，
 否则按请求完整路径匹配，因此普通入口也能用。
 
-- 方法：`get`、`post`、`put`、`delete`、`patch`、`options`、`head`，以及匹配任意方法的 `all`。
+- 方法：`get`、`post`、`put`、`delete`、`patch`、`options`、`head`、`query`，以及匹配任意方法的 `all`。
 - 模式：`:param` 匹配单段（如 `/:id/update`）；末尾 `*` 捕获剩余路径到 `params["*"]`。
 - 处理函数：`(req: Request, params: Record<string, string>) => Response | Promise<Response>`。
 - `router.handle(req)` 分发并返回响应，无匹配返回 404。
-- `router.query(req)` 解析 URL query：单值键为 `string`，重复键为 `string[]`，如 `?a=1&a=2&b=x` → `{ a: ["1", "2"], b: "x" }`。
 
 ### 状态码
 
