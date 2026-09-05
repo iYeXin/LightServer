@@ -92,7 +92,8 @@ lightserver dev                            # 开发模式：配置热重载 + de
 lightserver start -c ./prod.config.ts --port 8080
 ```
 
-默认监听 `127.0.0.1:5600`。配置合并顺序（后者覆盖前者）：
+默认监听 `127.0.0.1:5600`。完全零配置启动时（无 `-c`、全局与本地都无配置文件），
+会在当前目录生成一份全注释的 `lightserver.config.ts` 起始模板，不改变默认行为。配置合并顺序（后者覆盖前者）：
 内置默认值 < 全局配置 < `./lightserver.config.ts`（项目本地）
 < `-c/--config` 指定文件 < CLI 参数。
 

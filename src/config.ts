@@ -6,6 +6,48 @@ import type { CliOverrides, LightServerConfig, ResolvedConfig } from "./types.ts
 
 export const LOCAL_CONFIG_NAME = "lightserver.config.ts";
 
+/** Starter template: commented examples only, so it never changes defaults. */
+export function starterConfigTemplate(globalPath: string): string {
+  return `// LightServer project config (created automatically on first zero-config run).
+// Merge order: defaults < ${globalPath} < ./lightserver.config.ts < -c file < CLI flags.
+// Uncomment what you need; everything else stays at built-in defaults.
+export default {
+  // port: 5600,
+  // host: "127.0.0.1",
+  // sites: {
+  //   default: {
+  //     root: "./public",
+  //     routes: [
+  //       { match: "/", root: "./public" },
+  //       { match: "/api", root: "./api" },
+  //     ],
+  //   },
+  // },
+};
+`;
+}
+
+/**
+ * Scaffold ./lightserver.config.ts when starting fully zero-config
+ * (no -c, no global, no local file). Best-effort: returns the created
+ * path, or null when skipped/failed (never throws).
+ */
+export async function maybeCreateStarterConfig(
+  cwd: string,
+  loadedFiles: string[],
+): Promise<string | null> {
+  if (loadedFiles.length > 0) return null;
+  const target = path.join(cwd, LOCAL_CONFIG_NAME);
+  try {
+    await fs.promises.writeFile(target, starterConfigTemplate(globalConfigCandidates()[0]), {
+      flag: "wx",
+    });
+    return target;
+  } catch {
+    return null;
+  }
+}
+
 export const DEFAULTS = {
   port: 5600,
   host: "127.0.0.1",
