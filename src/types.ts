@@ -58,6 +58,11 @@ export interface PreProcessInfo {
 
 export type PreProcessResult = Response | Request | void | undefined | null;
 
+export type PreProcessFn = (
+  req: Request,
+  info: PreProcessInfo,
+) => PreProcessResult | Promise<PreProcessResult>;
+
 export interface LightServerConfig {
   port?: number;
   host?: string;
@@ -84,10 +89,12 @@ export interface LightServerConfig {
   staticExtensions?: string[];
   defaultSite?: string;
   sites?: Record<string, SiteConfig>;
-  preProcess?: (
-    req: Request,
-    info: PreProcessInfo,
-  ) => PreProcessResult | Promise<PreProcessResult>;
+  /**
+   * Inline function (TS configs) or module path (JSONC, or TS referencing
+   * a separate file). Paths resolve against the declaring config file's dir;
+   * the module's default export must be the middleware function.
+   */
+  preProcess?: PreProcessFn | string;
   dynamicRouting?: DynamicRoutingConfig;
   logLevel?: "debug" | "info" | "warn" | "error";
 }
@@ -108,7 +115,7 @@ export interface ResolvedConfig {
   logMaxFiles: number;
   logFlushIntervalMs: number;
   sites: Record<string, SiteConfig>;
-  preProcess?: LightServerConfig["preProcess"];
+  preProcess?: PreProcessFn;
   dynamicRouting: { enabled: boolean; maxDepth: number };
   logLevel: "debug" | "info" | "warn" | "error";
 }

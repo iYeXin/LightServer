@@ -299,7 +299,7 @@ export async function startServer(opts: StartOptions): Promise<ServerHandle> {
 
   function watchConfigs(): void {
     if (!isDev) return;
-    for (const file of new Set(configFiles)) {
+    for (const file of new Set([...configFiles, ...opts.initial.extraWatchFiles])) {
       try {
         const w = fs.watch(file, () => {
           debounced(`config:${file}`, () => void reloadConfig(file));

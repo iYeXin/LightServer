@@ -184,7 +184,8 @@ import type { ServiceContext } from '@iyexin/lightserver';
 
 全局配置是 JSONC（带注释的 JSON，方便其他程序读写），项目本地与 `-c` 指定文件是
 TypeScript（`export default` 导出对象即可，同名 `.js`/`.mjs` 也可；`-c` 也接受
-`.jsonc`/`.json`）。只有 TS 配置能定义函数（如 `preProcess`），JSONC 里只能放数据。
+`.jsonc`/`.json`）。`preProcess` 中间件住在独立的 ts/js 文件里，JSONC 中声明路径、
+TS 中可内联函数也可声明路径。
 
 项目本地配置为当前目录 `lightserver.config.ts`，另可用 `-c/--config` 指定显式文件。
 
@@ -217,7 +218,7 @@ TypeScript（`export default` 导出对象即可，同名 `.js`/`.mjs` 也可；
 | `staticExtensions`   | `string[]`                                 | 见上                         | 静态扩展名白名单               |
 | `defaultSite`        | `string`                                   | `'default'`                  | 默认站点名                     |
 | `sites`              | `Record<string, SiteConfig>`               | 无                           | 多站点配置                     |
-| `preProcess`         | 函数                                       | 无                           | 全局预处理中间件，见下         |
+| `preProcess`         | 函数 \| 路径                             | 无                           | 全局预处理中间件，见下         |
 | `dynamicRouting`     | `{ enabled?: boolean; maxDepth?: number }` | `{ enabled: true, maxDepth: 5 }` | 动态路由设置               |
 | `logLevel`           | `string`                                   | `info`（`dev` 下为 `debug`） | `debug \| info \| warn \| error`|
 
@@ -269,14 +270,21 @@ export default {
 };
 ```
 
-**预处理中间件示例**（仅 TS 配置支持函数）：
+**预处理中间件**：独立 ts/js 文件默认导出函数，JSONC 中声明路径（相对声明它的配置文件），
+TS 配置中可内联函数也可声明路径；`dev` 模式连带监听中间件文件变更。路径解析失败或导出非函数时启动报错。
+
+```jsonc
+// lightserver.jsonc
+{
+  "preProcess": "./middleware.ts"
+}
+```
 
 ```typescript
-export default {
-  preProcess: (req, { site, pathname }) => {
-    if (pathname === '/blocked') return new Response('blocked', { status: 403 });
-    // 返回 Request 则替换原请求继续处理；返回空则放行
-  },
+// middleware.ts（与 lightserver.jsonc 同目录）
+export default (req, { site, pathname }) => {
+  if (pathname === '/blocked') return new Response('blocked', { status: 403 });
+  // 返回 Request 则替换原请求继续处理；返回空则放行
 };
 ```
 

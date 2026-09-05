@@ -154,6 +154,10 @@ export function withDefaults(
   partial: Partial<LightServerConfig>,
   fallbackLogLevel?: ResolvedConfig["logLevel"],
 ): ResolvedConfig {
+  if (typeof partial.preProcess === "string") {
+    // Layers resolve string refs before merging; reaching here is a bug.
+    throw new Error(`Unresolved preProcess reference: ${partial.preProcess}`);
+  }
   return {
     port: partial.port ?? DEFAULTS.port,
     host: partial.host ?? DEFAULTS.host,
@@ -166,7 +170,7 @@ export function withDefaults(
     routeCacheTtl: partial.routeCacheTtl ?? DEFAULTS.routeCacheTtl,
     routeCacheSize: partial.routeCacheSize ?? DEFAULTS.routeCacheSize,
     sites: { ...(partial.sites ?? {}) },
-    preProcess: partial.preProcess,
+    preProcess: typeof partial.preProcess === "function" ? partial.preProcess : undefined,
     dynamicRouting: {
       enabled: partial.dynamicRouting?.enabled ?? DEFAULTS.dynamicRouting.enabled,
       maxDepth: partial.dynamicRouting?.maxDepth ?? DEFAULTS.dynamicRouting.maxDepth,
@@ -227,6 +231,51 @@ export interface LoadedConfig {
   files: string[];
   /** Subset of files: the global one, if any. */
   globalFiles: string[];
+  /** File-referenced middleware modules (for dev watching). */
+  extraWatchFiles: string[];
+}
+
+/**
+ * Load a file-referenced preProcess middleware. `ref` is absolute or
+ * relative to `basedir` (the declaring config file's directory).
+ */
+export async function loadPreProcessModule(
+  ref: string,
+  basedir: string,
+  declaringFile: string,
+): Promise<{ fn: import("./types.ts").PreProcessFn; file: string }> {
+  if (!ref || typeof ref !== "string") {
+    throw new Error(`Invalid preProcess reference in ${declaringFile}: expected a module path`);
+  }
+  const abs = path.isAbsolute(ref) ? ref : path.resolve(basedir, ref);
+  reloadCounter++;
+  let mod: Record<string, unknown>;
+  try {
+    mod = (await import(pathToFileURL(abs).href + `?lightserver=${reloadCounter}`)) as Record<
+      string,
+      unknown
+    >;
+  } catch (e) {
+    throw new Error(
+      `Failed to load preProcess module ${abs} (declared in ${declaringFile}): ${String((e as Error)?.message ?? e)}`,
+    );
+  }
+  const fn = (mod?.default ?? mod) as unknown;
+  if (typeof fn !== "function") {
+    throw new Error(`preProcess module ${abs} must default-export a function`);
+  }
+  return { fn: fn as import("./types.ts").PreProcessFn, file: abs };
+}
+
+async function resolveLayerPreProcess(
+  layer: { config: Partial<LightServerConfig>; file: string },
+  extraWatchFiles: string[],
+): Promise<void> {
+  const ref = layer.config.preProcess;
+  if (!layer.file || typeof ref !== "string") return;
+  const { fn, file } = await loadPreProcessModule(ref, path.dirname(layer.file), layer.file);
+  layer.config.preProcess = fn;
+  if (!extraWatchFiles.includes(file)) extraWatchFiles.push(file);
 }
 
 export async function resolveConfig(opts: {
@@ -252,6 +301,12 @@ export async function resolveConfig(opts: {
     if (!e.file) throw new Error(`Config file not found: ${abs}`);
   }
 
+  const extraWatchFiles: string[] = [];
+  await Promise.all([
+    resolveLayerPreProcess(g, extraWatchFiles),
+    resolveLayerPreProcess(l, extraWatchFiles),
+    resolveLayerPreProcess(e, extraWatchFiles),
+  ]);
   const merged = mergeConfigs(g.config, l.config, e.config, cliToPartial(opts.cli));
   const config = withDefaults(merged, opts.fallbackLogLevel);
   if (!config.logFile) {
@@ -262,7 +317,7 @@ export async function resolveConfig(opts: {
   validateConfig(config);
 
   const files = [g.file, l.file, e.file].filter((f) => f !== "");
-  return { config, files, globalFiles: g.file ? [g.file] : [] };
+  return { config, files, globalFiles: g.file ? [g.file] : [], extraWatchFiles };
 }
 
 /** True when any discoverable config exists (global candidates incl. legacy, or local). */

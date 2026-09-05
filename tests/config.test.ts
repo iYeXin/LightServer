@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import {
   hasAnyConfigFile,
+  loadPreProcessModule,
   maybeCreateStarterConfig,
   mergeConfigs,
+  resolveConfig,
   validateConfig,
   withDefaults,
 } from "../src/config.ts";
@@ -70,6 +72,78 @@ describe("hasAnyConfigFile", () => {
       fs.rmSync(path.join(cwd, "lightserver.config.ts"));
       fs.writeFileSync(path.join(data, "lightserver.jsonc"), '{ "port": 5600 }\n');
       expect(await hasAnyConfigFile(cwd)).toBe(true);
+    } finally {
+      if (prev === undefined) delete process.env[DATA_DIR_ENV];
+      else process.env[DATA_DIR_ENV] = prev;
+      fs.rmSync(data, { recursive: true, force: true });
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("preProcess module references", () => {
+  test("loads default-exported middleware by relative and absolute path", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ls-mw-"));
+    try {
+      fs.writeFileSync(
+        path.join(dir, "mw.ts"),
+        "export default async (req: Request) => new Response('mw:' + new URL(req.url).pathname);\n",
+      );
+      const rel = await loadPreProcessModule("./mw.ts", dir, "test");
+      expect(typeof rel.fn).toBe("function");
+      expect(rel.file).toBe(path.join(dir, "mw.ts"));
+      expect(await (await rel.fn(new Request("http://x/hi"), {} as never)).text()).toBe("mw:/hi");
+      const abs = await loadPreProcessModule(path.join(dir, "mw.ts"), dir, "test");
+      expect(typeof abs.fn).toBe("function");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("missing file and non-function export throw", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ls-mw-"));
+    try {
+      await expect(loadPreProcessModule("./nope.ts", dir, "decl")).rejects.toThrow(/Failed to load/);
+      fs.writeFileSync(path.join(dir, "bad.ts"), "export default 42;\n");
+      await expect(loadPreProcessModule("./bad.ts", dir, "decl")).rejects.toThrow(/must default-export/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("global JSONC declaring middleware resolves end to end", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const prev = process.env[DATA_DIR_ENV];
+    const data = fs.mkdtempSync(path.join(os.tmpdir(), "ls-mw-data-"));
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "ls-mw-cwd-"));
+    try {
+      process.env[DATA_DIR_ENV] = data;
+      fs.writeFileSync(
+        path.join(data, "mw.ts"),
+        "export default async () => new Response('blocked', { status: 403 });\n",
+      );
+      fs.writeFileSync(
+        path.join(data, "lightserver.jsonc"),
+        `{
+          // machine-managed global config
+          "sites": { "default": { "root": ${JSON.stringify(cwd)} } },
+          "preProcess": "./mw.ts",
+        }\n`,
+      );
+      const loaded = await resolveConfig({ cwd });
+      expect(typeof loaded.config.preProcess).toBe("function");
+      const resp = await loaded.config.preProcess!(new Request("http://x/"), {} as never);
+      expect(resp).toBeInstanceOf(Response);
+      expect((resp as Response).status).toBe(403);
+      expect(loaded.extraWatchFiles).toEqual([path.join(data, "mw.ts")]);
     } finally {
       if (prev === undefined) delete process.env[DATA_DIR_ENV];
       else process.env[DATA_DIR_ENV] = prev;
