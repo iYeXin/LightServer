@@ -81,7 +81,7 @@ export default async function init(ctx: ServiceContext) {
 }
 ```
 
-括号名是**字面量路径段**（刻意区别于 Next.js 的 `[id]` 动态路由）：
+括号名是**字面量路径段**（区别于 Next.js 的 `[id]` 动态路由）：
 `api/(user).ts` 处理 `/api/user` 与 `/api/user/*`，剩余部分以 `ctx.subPath` 传入。
 
 ### 3. 启动
@@ -125,20 +125,20 @@ lightserver start -c ./prod.config.ts --port 8080
 
 ### ServiceContext API
 
-| 成员                 | 类型                                          | 说明                                                         |
-| -------------------- | --------------------------------------------- | ------------------------------------------------------------ |
-| `onRequest(handler)` | `(req, ctx) => Response \| Promise<Response>` | 注册处理函数（仅一个，后注册覆盖）；第二个参数是当次请求上下文 |
-| `onUnload(callback)` | `() => void \| Promise<void>`                 | 注册清理回调，优雅关闭时依次执行                             |
-| `config`             | `Record<string, any>`                         | 站点 `serviceOptions`，按请求刷新                            |
-| `env`                | `Record<string, string>`                      | 进程启动时的环境变量快照                                     |
-| `log`                | `{ info, warn, error, debug }`                | 结构化日志（走 stderr）                                      |
-| `signal`             | `AbortSignal`                                 | 退出信号，关闭时 abort                                       |
-| `subPath`            | `string`                                      | 动态匹配的剩余路径（`/` 开头；裸前缀为 `/`；非动态匹配为 `""`）|
-| `params`             | `Record<string, string>`                      | 路由参数，动态匹配时至少含 `{ prefix }`                      |
-| `pathname`           | `string`                                      | 原始请求路径                                                 |
-| `site`               | `string`                                      | 命中的站点名                                                 |
-| `routeFile`          | `string`                                      | 本次请求的入口文件绝对路径                                   |
-| `util`               | `{ createRouter(): Router }`                  | 创建子路径路由器                                             |
+| 成员                 | 类型                                          | 说明                                                            |
+| -------------------- | --------------------------------------------- | --------------------------------------------------------------- |
+| `onRequest(handler)` | `(req, ctx) => Response \| Promise<Response>` | 注册处理函数（仅一个，后注册覆盖）；第二个参数是当次请求上下文  |
+| `onUnload(callback)` | `() => void \| Promise<void>`                 | 注册清理回调，优雅关闭时依次执行                                |
+| `config`             | `Record<string, any>`                         | 站点 `serviceOptions`，按请求刷新                               |
+| `env`                | `Record<string, string>`                      | 进程启动时的环境变量快照                                        |
+| `log`                | `{ info, warn, error, debug }`                | 结构化日志（走 stderr）                                         |
+| `signal`             | `AbortSignal`                                 | 退出信号，关闭时 abort                                          |
+| `subPath`            | `string`                                      | 动态匹配的剩余路径（`/` 开头；裸前缀为 `/`；非动态匹配为 `""`） |
+| `params`             | `Record<string, string>`                      | 路由参数，动态匹配时至少含 `{ prefix }`                         |
+| `pathname`           | `string`                                      | 原始请求路径                                                    |
+| `site`               | `string`                                      | 命中的站点名                                                    |
+| `routeFile`          | `string`                                      | 本次请求的入口文件绝对路径                                      |
+| `util`               | `{ createRouter(): Router }`                  | 创建子路径路由器                                                |
 
 处理函数使用 Web 标准 `Request`/`Response`。注意：同一进程服务多个请求，
 `init` 闭包捕获的 `ctx` 会在每次请求前刷新，推荐直接使用处理函数的第二个参数。
@@ -182,57 +182,57 @@ import type { ServiceContext } from '@iyexin/lightserver';
 
 ## 配置参考
 
-全局配置是 JSONC（带注释的 JSON，方便其他程序读写），项目本地与 `-c` 指定文件是
+全局配置是 JSONC（带注释的 JSON），项目本地与 `-c` 指定文件是
 TypeScript（`export default` 导出对象即可，同名 `.js`/`.mjs` 也可；`-c` 也接受
-`.jsonc`/`.json`）。`preProcess` 中间件住在独立的 ts/js 文件里，JSONC 中声明路径、
+`.jsonc`/`.json`）。`preProcess` 中间件在独立的 ts/js 文件里，JSONC 中声明路径、
 TS 中可内联函数也可声明路径。
 
 项目本地配置为当前目录 `lightserver.config.ts`，另可用 `-c/--config` 指定显式文件。
 
 全局配置与默认日志集中存放在平台数据目录，可用 `LIGHTSERVER_DATA_DIR` 环境变量覆盖：
 
-| 平台    | 数据目录                          | 全局配置                                          | 默认日志                                     |
-| ------- | --------------------------------- | --------------------------------------------------- | -------------------------------------------- |
-| Linux   | `/etc/lightserver/`               | `/etc/lightserver/lightserver.jsonc`                | `/etc/lightserver/lightserver.log`           |
-| macOS   | `~/.lightserver/`                 | `~/.lightserver/lightserver.jsonc`                  | `~/.lightserver/lightserver.log`             |
-| Windows | `%USERPROFILE%\.lightserver\`     | `%USERPROFILE%\.lightserver\lightserver.jsonc`      | `%USERPROFILE%\.lightserver\lightserver.log` |
+| 平台    | 数据目录                      | 全局配置                                       | 默认日志                                     |
+| ------- | ----------------------------- | ---------------------------------------------- | -------------------------------------------- |
+| Linux   | `/etc/lightserver/`           | `/etc/lightserver/lightserver.jsonc`           | `/etc/lightserver/lightserver.log`           |
+| macOS   | `~/.lightserver/`             | `~/.lightserver/lightserver.jsonc`             | `~/.lightserver/lightserver.log`             |
+| Windows | `%USERPROFILE%\.lightserver\` | `%USERPROFILE%\.lightserver\lightserver.jsonc` | `%USERPROFILE%\.lightserver\lightserver.log` |
 
 旧版 `~/.lightserver.config.ts` 仍作为回退读取（平台路径优先）。
 注意 Linux 数据目录通常需要 root 写入：建议以 root 运行，或预建目录并授权；
 建目录失败时启动打 warn，日志回退到 stderr。
 
-| 字段                 | 类型                                       | 默认值                       | 说明                           |
-| -------------------- | ------------------------------------------ | ---------------------------- | ------------------------------ |
-| `port`               | `number`                                   | `5600`                       | 监听端口                       |
-| `host`               | `string`                                   | `'127.0.0.1'`                | 监听地址                       |
-| `maxProcesses`       | `number`                                   | `10`                         | 全局共享进程池硬上限           |
-| `idleTimeout`        | `number`                                   | `300`                        | 空闲淘汰秒数                   |
-| `drainTimeout`       | `number`                                   | `10`                         | 排水等待秒数                   |
-| `requestTimeout`     | `number`                                   | `30`                         | 服务请求超时秒数（→ 504）      |
-| `routeCacheTtl`      | `number`                                   | `60`                         | 路由缓存秒数（0 关闭）         |
-| `routeCacheSize`     | `number`                                   | `2000`                       | 路由缓存条目上限               |
-| `logFile`            | `string`                                   | `<数据目录>/lightserver.log` | 日志文件（相对路径按 cwd 解析）|
-| `logMaxBytes`        | `number`                                   | `10485760`                   | 单文件超此字节数轮转           |
-| `logMaxFiles`        | `number`                                   | `5`                          | 保留 `logFile.1..N`（≤0 不轮转）|
-| `logFlushIntervalMs` | `number`                                   | `1000`                       | 日志异步刷盘间隔毫秒           |
-| `staticExtensions`   | `string[]`                                 | 见上                         | 静态扩展名白名单               |
-| `defaultSite`        | `string`                                   | `'default'`                  | 默认站点名                     |
-| `sites`              | `Record<string, SiteConfig>`               | 无                           | 多站点配置                     |
-| `preProcess`         | 函数 \| 路径                             | 无                           | 全局预处理中间件，见下         |
-| `dynamicRouting`     | `{ enabled?: boolean; maxDepth?: number }` | `{ enabled: true, maxDepth: 5 }` | 动态路由设置               |
-| `logLevel`           | `string`                                   | `info`（`dev` 下为 `debug`） | `debug \| info \| warn \| error`|
+| 字段                 | 类型                                       | 默认值                           | 说明                             |
+| -------------------- | ------------------------------------------ | -------------------------------- | -------------------------------- |
+| `port`               | `number`                                   | `5600`                           | 监听端口                         |
+| `host`               | `string`                                   | `'127.0.0.1'`                    | 监听地址                         |
+| `maxProcesses`       | `number`                                   | `10`                             | 全局共享进程池硬上限             |
+| `idleTimeout`        | `number`                                   | `300`                            | 空闲淘汰秒数                     |
+| `drainTimeout`       | `number`                                   | `10`                             | 排水等待秒数                     |
+| `requestTimeout`     | `number`                                   | `30`                             | 服务请求超时秒数（→ 504）        |
+| `routeCacheTtl`      | `number`                                   | `60`                             | 路由缓存秒数（0 关闭）           |
+| `routeCacheSize`     | `number`                                   | `2000`                           | 路由缓存条目上限                 |
+| `logFile`            | `string`                                   | `<数据目录>/lightserver.log`     | 日志文件（相对路径按 cwd 解析）  |
+| `logMaxBytes`        | `number`                                   | `10485760`                       | 单文件超此字节数轮转             |
+| `logMaxFiles`        | `number`                                   | `5`                              | 保留 `logFile.1..N`（≤0 不轮转） |
+| `logFlushIntervalMs` | `number`                                   | `1000`                           | 日志异步刷盘间隔毫秒             |
+| `staticExtensions`   | `string[]`                                 | 见上                             | 静态扩展名白名单                 |
+| `defaultSite`        | `string`                                   | `'default'`                      | 默认站点名                       |
+| `sites`              | `Record<string, SiteConfig>`               | 无                               | 多站点配置                       |
+| `preProcess`         | 函数 \| 路径                               | 无                               | 全局预处理中间件，见下           |
+| `dynamicRouting`     | `{ enabled?: boolean; maxDepth?: number }` | `{ enabled: true, maxDepth: 5 }` | 动态路由设置                     |
+| `logLevel`           | `string`                                   | `info`（`dev` 下为 `debug`）     | `debug \| info \| warn \| error` |
 
 **SiteConfig**：
 
-| 字段             | 类型                  | 说明                                                             |
-| ---------------- | --------------------- | ---------------------------------------------------------------- |
-| `host`           | `string`              | 精确、通配 `*.example.com`（不含裸域）、正则（`~` 开头）          |
-| `root`           | `string`              | 站点根目录（**必填**，无隐式默认；相对路径按启动 cwd 解析）      |
-| `routes`         | 数组                  | 路径路由规则（`RouteRule`），最长匹配优先                         |
-| `maxProcesses`   | `number`              | 站点软上限（池内该站进程数 cap，全局上限仍是硬上限）              |
-| `redirects`      | 数组                  | `{ from, to, status? }`，`from` 可为精确路径或 `/old/*` 前缀      |
-| `deny`           | `string[]`            | 精确/子树、glob（如 `/private/**`）或正则，命中 → 403             |
-| `serviceOptions` | `Record<string, any>` | 传给服务的配置（经环回 header 传递，约 8KB 上限）                 |
+| 字段             | 类型                  | 说明                                                         |
+| ---------------- | --------------------- | ------------------------------------------------------------ |
+| `host`           | `string`              | 精确、通配 `*.example.com`（不含裸域）、正则（`~` 开头）     |
+| `root`           | `string`              | 站点根目录（**必填**；相对路径按启动 cwd 解析）              |
+| `routes`         | 数组                  | 路径路由规则（`RouteRule`），最长匹配优先                    |
+| `maxProcesses`   | `number`              | 站点软上限（池内该站进程数 cap，全局上限仍是硬上限）         |
+| `redirects`      | 数组                  | `{ from, to, status? }`，`from` 可为精确路径或 `/old/*` 前缀 |
+| `deny`           | `string[]`            | 精确/子树、glob（如 `/private/**`）或正则，命中 → 403        |
+| `serviceOptions` | `Record<string, any>` | 传给服务的配置（经环回 header 传递，约 8KB 上限）            |
 
 **RouteRule**（`routes` 数组元素）：
 
@@ -297,20 +297,20 @@ lightserver start [options]
 lightserver dev [options]
 ```
 
-| 选项                    | 说明                                   |
-| ----------------------- | -------------------------------------- |
-| `-c, --config <path>`   | 显式配置文件（覆盖自动发现）           |
-| `-p, --port <n>`        | 监听端口（默认 5600）                  |
-| `-H, --host <addr>`     | 监听地址（默认 127.0.0.1）             |
-| `--max-processes <n>`   | 全局进程池上限（默认 10）              |
-| `--idle-timeout <s>`    | 空闲淘汰秒数（默认 300）               |
-| `--drain-timeout <s>`   | 排水等待秒数（默认 10）                |
-| `--request-timeout <s>` | 服务请求超时秒数（默认 30）            |
-| `--log-level <level>`   | debug \| info \| warn \| error         |
-| `--log-file <path>`     | 日志文件（默认见上表 `logFile`）       |
-| `-v, --verbose`         | 等价于 `--log-level debug`             |
-| `-h, --help`            | 帮助                                   |
-| `-V, --version`         | 版本                                   |
+| 选项                    | 说明                             |
+| ----------------------- | -------------------------------- |
+| `-c, --config <path>`   | 显式配置文件（覆盖自动发现）     |
+| `-p, --port <n>`        | 监听端口（默认 5600）            |
+| `-H, --host <addr>`     | 监听地址（默认 127.0.0.1）       |
+| `--max-processes <n>`   | 全局进程池上限（默认 10）        |
+| `--idle-timeout <s>`    | 空闲淘汰秒数（默认 300）         |
+| `--drain-timeout <s>`   | 排水等待秒数（默认 10）          |
+| `--request-timeout <s>` | 服务请求超时秒数（默认 30）      |
+| `--log-level <level>`   | debug \| info \| warn \| error   |
+| `--log-file <path>`     | 日志文件（默认见上表 `logFile`） |
+| `-v, --verbose`         | 等价于 `--log-level debug`       |
+| `-h, --help`            | 帮助                             |
+| `-V, --version`         | 版本                             |
 
 ## 开发模式
 
@@ -397,9 +397,7 @@ server {
 
 ## 限制
 
-- 无真正动态参数，只有固定前缀通配，子路径靠内部路由器解析。
-- 不支持 WebSocket 升级（返回 501）。
-- 单服务进程并发受其事件循环限制，高并发请水平扩展。
+- 不支持 WebSocket 升级（返回 501）。、
 - 监听端口/地址变更需重启（其余配置 `dev` 下可热重载）。
 
 ## 许可证

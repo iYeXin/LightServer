@@ -95,7 +95,9 @@ describe("preProcess module references", () => {
       const rel = await loadPreProcessModule("./mw.ts", dir, "test");
       expect(typeof rel.fn).toBe("function");
       expect(rel.file).toBe(path.join(dir, "mw.ts"));
-      expect(await (await rel.fn(new Request("http://x/hi"), {} as never)).text()).toBe("mw:/hi");
+      const out = await rel.fn(new Request("http://x/hi"), {} as never);
+      expect(out).toBeInstanceOf(Response);
+      expect(await (out as Response).text()).toBe("mw:/hi");
       const abs = await loadPreProcessModule(path.join(dir, "mw.ts"), dir, "test");
       expect(typeof abs.fn).toBe("function");
     } finally {
