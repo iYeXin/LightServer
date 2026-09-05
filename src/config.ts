@@ -6,23 +6,22 @@ import type { CliOverrides, LightServerConfig, ResolvedConfig } from "./types.ts
 
 export const LOCAL_CONFIG_NAME = "lightserver.config.ts";
 
-/** Starter template: commented examples only, so it never changes defaults. */
+/** Starter template: one working example site; edit paths to deploy. */
 export function starterConfigTemplate(): string {
   return `// LightServer global config (created automatically on first run with no config).
 // Merge order: defaults < this file < ./lightserver.config.ts < -c file < CLI flags.
 // Prefer absolute paths here: relative paths resolve against the startup cwd.
-// Uncomment what you need; everything else stays at built-in defaults.
 export default {
   // port: 5600,
   // host: "127.0.0.1",
-  // sites: {
-  //   default: {
-  //     root: "/srv/websites/example.com",
-  //     routes: [
-  //       { match: "/", root: "/srv/websites/example.com" },
-  //     ],
-  //   },
-  // },
+  sites: {
+    default: {
+      root: "/srv/websites/example.com",
+      // routes: [
+      //   { match: "/api", root: "/srv/websites/example.com/api" },
+      // ],
+    },
+  },
 };
 `;
 }
@@ -174,8 +173,7 @@ export function withDefaults(
   };
 }
 
-export function validateConfig(config: ResolvedConfig): void {
-  if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535) {
+export function validateConfig(config: ResolvedConfig): void {  if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535) {
     throw new Error(`Invalid port: ${config.port}`);
   }
   if (!Number.isInteger(config.maxProcesses) || config.maxProcesses < 1) {
@@ -206,6 +204,14 @@ export function validateConfig(config: ResolvedConfig): void {
     throw new Error(
       `defaultSite "${config.defaultSite}" is not defined in sites (${Object.keys(config.sites).join(", ")})`,
     );
+  }
+  if (Object.keys(config.sites).length === 0) {
+    throw new Error("no sites configured: define at least one site with an explicit root");
+  }
+  for (const [name, site] of Object.entries(config.sites)) {
+    if (!site || typeof site.root !== "string" || site.root.trim() === "") {
+      throw new Error(`site "${name}" must define an explicit root directory`);
+    }
   }
 }
 
@@ -251,6 +257,15 @@ export async function resolveConfig(opts: {
 
   const files = [g.file, l.file, e.file].filter((f) => f !== "");
   return { config, files, globalFiles: g.file ? [g.file] : [] };
+}
+
+/** True when any discoverable config exists (global candidates incl. legacy, or local). */
+export async function hasAnyConfigFile(cwd: string): Promise<boolean> {
+  for (const candidate of globalConfigCandidates()) {
+    if (await resolveConfigVariant(candidate)) return true;
+  }
+  if (await resolveConfigVariant(path.join(cwd, LOCAL_CONFIG_NAME))) return true;
+  return false;
 }
 
 /** First existing global config wins (platform path, then legacy dotfile). */

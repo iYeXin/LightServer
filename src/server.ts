@@ -64,40 +64,16 @@ export interface StartOptions {
   initial: LoadedConfig;
 }
 
-function defaultRoot(cwd: string): string {
-  // Preferred convention first, then the legacy ./public, then cwd itself.
-  for (const rel of [path.join("srv", "websites", "example.com"), "public"]) {
-    try {
-      if (fs.statSync(path.join(cwd, rel)).isDirectory()) return path.join(cwd, rel);
-    } catch {
-      // try next
-    }
-  }
-  return cwd;
-}
-
 function compileSites(config: ResolvedConfig, cwd: string): Map<string, CompiledSite> {
   const out = new Map<string, CompiledSite>();
   const names = Object.keys(config.sites);
   if (names.length === 0) {
-    const root = defaultRoot(cwd);
-    if (root === cwd) {
-      log("warn", "no sites configured and no conventional root found; serving cwd", { root });
-    }
-    out.set(config.defaultSite, {
-      name: config.defaultSite,
-      hostTest: null,
-      rootAbs: root,
-      routes: [],
-      redirects: [],
-      denyTest: () => false,
-      serviceOptions: {},
-    });
-    return out;
+    // Unreachable via resolveConfig (validateConfig rejects it); fail loudly anyway.
+    throw new Error("no sites configured: define at least one site with an explicit root");
   }
   for (const name of names) {
     const s = config.sites[name];
-    const rootAbs = path.resolve(cwd, s.root ?? defaultRoot(cwd));
+    const rootAbs = path.resolve(cwd, s.root);
     const routes: CompiledRoute[] = (s.routes ?? []).map((r: RouteRule, i: number) => {
       const matcher = compileRoutePattern(r.match);
       return {

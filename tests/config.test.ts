@@ -1,11 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import { maybeCreateStarterConfig, mergeConfigs, withDefaults } from "../src/config.ts";
+import {
+  hasAnyConfigFile,
+  maybeCreateStarterConfig,
+  mergeConfigs,
+  validateConfig,
+  withDefaults,
+} from "../src/config.ts";
+import { DATA_DIR_ENV } from "../src/paths.ts";
 
 describe("config merge", () => {
   test("later wins; sites merge per site; lists replace", () => {
     const merged = mergeConfigs(
       { port: 5600, sites: { a: { root: "./a" } }, staticExtensions: [".html"] },
-      { port: 8080, sites: { a: { host: "a.test" }, b: { root: "./b" } } },
+      { port: 8080, sites: { a: { root: "./a", host: "a.test" }, b: { root: "./b" } } },
     );
     expect(merged.port).toBe(8080);
     expect(merged.sites?.a).toEqual({ root: "./a", host: "a.test" });
@@ -31,6 +38,47 @@ describe("config merge", () => {
   });
 });
 
+describe("validateConfig", () => {
+  const base = () =>
+    withDefaults({ sites: { default: { root: "/srv/x" } } });
+  test("accepts explicit roots", () => {
+    expect(() => validateConfig(base())).not.toThrow();
+  });
+  test("rejects empty sites", () => {
+    expect(() => validateConfig(withDefaults({}))).toThrow(/no sites configured/);
+  });
+  test("rejects sites without root", () => {
+    expect(() =>
+      validateConfig(withDefaults({ sites: { default: {} as never } })),
+    ).toThrow(/must define an explicit root/);
+  });
+});
+
+describe("hasAnyConfigFile", () => {
+  test("detects global, legacy, local, or nothing", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const prev = process.env[DATA_DIR_ENV];
+    const data = fs.mkdtempSync(path.join(os.tmpdir(), "ls-hasany-data-"));
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "ls-hasany-cwd-"));
+    try {
+      process.env[DATA_DIR_ENV] = data;
+      expect(await hasAnyConfigFile(cwd)).toBe(false);
+      fs.writeFileSync(path.join(cwd, "lightserver.config.ts"), "export default {};\n");
+      expect(await hasAnyConfigFile(cwd)).toBe(true);
+      fs.rmSync(path.join(cwd, "lightserver.config.ts"));
+      fs.writeFileSync(path.join(data, "lightserver.config.ts"), "export default {};\n");
+      expect(await hasAnyConfigFile(cwd)).toBe(true);
+    } finally {
+      if (prev === undefined) delete process.env[DATA_DIR_ENV];
+      else process.env[DATA_DIR_ENV] = prev;
+      fs.rmSync(data, { recursive: true, force: true });
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("maybeCreateStarterConfig", () => {
   test("creates a valid no-op template when no global config", async () => {
     const fs = await import("node:fs");
@@ -42,7 +90,9 @@ describe("maybeCreateStarterConfig", () => {
       const created = await maybeCreateStarterConfig(dir, []);
       expect(created).toBe(path.join(dir, "lightserver.config.ts"));
       const mod = await import(pathToFileURL(created!).href);
-      expect(mod.default).toEqual({});
+      expect(mod.default).toEqual({
+        sites: { default: { root: "/srv/websites/example.com" } },
+      });
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

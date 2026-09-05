@@ -1,4 +1,4 @@
-import { maybeCreateStarterConfig, resolveConfig } from "./config.ts";
+import { hasAnyConfigFile, maybeCreateStarterConfig, resolveConfig } from "./config.ts";
 import { configureLogging } from "./logger.ts";
 import { dataDir, defaultLogFile, ensureDataDir, globalConfigCandidates } from "./paths.ts";
 import { startServer } from "./server.ts";
@@ -191,6 +191,12 @@ export async function main(argv: string[]): Promise<void> {
 
   let loaded;
   try {
+    if (!parsed.explicitConfig && !(await hasAnyConfigFile(cwd))) {
+      const created = await maybeCreateStarterConfig(dataDir(), []);
+      if (created) {
+        process.stdout.write(`Created starter config: ${created}\n`);
+      }
+    }
     loaded = await resolveConfig({
       cwd,
       explicit: parsed.explicitConfig,
@@ -200,13 +206,6 @@ export async function main(argv: string[]): Promise<void> {
   } catch (e) {
     process.stderr.write(`Error: failed to load config: ${String((e as Error)?.message ?? e)}\n`);
     process.exit(1);
-  }
-
-  if (!parsed.explicitConfig) {
-    const created = await maybeCreateStarterConfig(dataDir(), loaded.globalFiles);
-    if (created) {
-      process.stdout.write(`Created starter config: ${created}\n`);
-    }
   }
 
   configureLogging({

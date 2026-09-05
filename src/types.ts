@@ -34,8 +34,8 @@ export interface RedirectRule {
 export interface SiteConfig {
   /** Exact (`example.com`), wildcard (`*.example.com`) or regex (`~^api\d?\.`). */
   host?: string;
-  /** Site root dir (relative paths resolve against the process cwd). */
-  root?: string;
+  /** Site root dir (required; relative paths resolve against the process cwd). */
+  root: string;
   /** Path-based routing inside this site. Longest match wins. */
   routes?: RouteRule[];
   /**
