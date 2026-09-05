@@ -16,7 +16,7 @@ export function starterConfigTemplate(): string {
   // "port": 5600,
   // "host": "127.0.0.1",
   "sites": {
-    "config": {
+    "example": {
       "hosts": ["example.com"],
       "root": "/srv/websites/example.com"
     }

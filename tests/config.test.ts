@@ -200,7 +200,7 @@ describe("maybeCreateStarterConfig", () => {
         any
       >;
       expect(parsed).toEqual({
-        sites: { config: { hosts: ["example.com"], root: "/srv/websites/example.com" } },
+        sites: { example: { hosts: ["example.com"], root: "/srv/websites/example.com" } },
       });
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
