@@ -68,7 +68,7 @@ describe("hasAnyConfigFile", () => {
       fs.writeFileSync(path.join(cwd, "lightserver.config.ts"), "export default {};\n");
       expect(await hasAnyConfigFile(cwd)).toBe(true);
       fs.rmSync(path.join(cwd, "lightserver.config.ts"));
-      fs.writeFileSync(path.join(data, "lightserver.config.ts"), "export default {};\n");
+      fs.writeFileSync(path.join(data, "lightserver.jsonc"), '{ "port": 5600 }\n');
       expect(await hasAnyConfigFile(cwd)).toBe(true);
     } finally {
       if (prev === undefined) delete process.env[DATA_DIR_ENV];
@@ -80,17 +80,20 @@ describe("hasAnyConfigFile", () => {
 });
 
 describe("maybeCreateStarterConfig", () => {
-  test("creates a valid no-op template when no global config", async () => {
+  test("creates a valid working template when no global config", async () => {
     const fs = await import("node:fs");
     const os = await import("node:os");
     const path = await import("node:path");
-    const { pathToFileURL } = await import("node:url");
+    const { parseJsonc } = await import("../src/jsonc.ts");
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ls-starter-"));
     try {
       const created = await maybeCreateStarterConfig(dir, []);
-      expect(created).toBe(path.join(dir, "lightserver.config.ts"));
-      const mod = await import(pathToFileURL(created!).href);
-      expect(mod.default).toEqual({
+      expect(created).toBe(path.join(dir, "lightserver.jsonc"));
+      const parsed = parseJsonc(fs.readFileSync(created!, "utf8"), created!) as Record<
+        string,
+        any
+      >;
+      expect(parsed).toEqual({
         sites: { default: { root: "/srv/websites/example.com" } },
       });
     } finally {
@@ -104,11 +107,11 @@ describe("maybeCreateStarterConfig", () => {
     const path = await import("node:path");
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ls-starter-"));
     try {
-      expect(await maybeCreateStarterConfig(dir, ["/etc/lightserver/lightserver.config.ts"])).toBeNull();
-      expect(fs.existsSync(path.join(dir, "lightserver.config.ts"))).toBe(false);
-      fs.writeFileSync(path.join(dir, "lightserver.config.ts"), "export default { port: 1234 };\n");
+      expect(await maybeCreateStarterConfig(dir, ["/etc/lightserver/lightserver.jsonc"])).toBeNull();
+      expect(fs.existsSync(path.join(dir, "lightserver.jsonc"))).toBe(false);
+      fs.writeFileSync(path.join(dir, "lightserver.jsonc"), '{ "port": 1234 }\n');
       expect(await maybeCreateStarterConfig(dir, [])).toBeNull();
-      expect(fs.readFileSync(path.join(dir, "lightserver.config.ts"), "utf8")).toContain("1234");
+      expect(fs.readFileSync(path.join(dir, "lightserver.jsonc"), "utf8")).toContain("1234");
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

@@ -4,7 +4,7 @@ import path from "node:path";
 
 export const DATA_DIR_ENV = "LIGHTSERVER_DATA_DIR";
 export const LEGACY_GLOBAL_CONFIG_NAME = ".lightserver.config.ts";
-export const GLOBAL_CONFIG_NAME = "lightserver.config.ts";
+export const GLOBAL_CONFIG_NAME = "lightserver.jsonc";
 export const DEFAULT_LOG_NAME = "lightserver.log";
 
 /**

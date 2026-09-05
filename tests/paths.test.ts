@@ -37,8 +37,8 @@ describe("dataDir", () => {
     const cands = globalConfigCandidates();
     expect(cands[0]).toBe(
       process.platform === "linux"
-        ? "/etc/lightserver/lightserver.config.ts"
-        : path.join(os.homedir(), ".lightserver", "lightserver.config.ts"),
+        ? "/etc/lightserver/lightserver.jsonc"
+        : path.join(os.homedir(), ".lightserver", "lightserver.jsonc"),
     );
     expect(cands[cands.length - 1]).toBe(path.join(os.homedir(), ".lightserver.config.ts"));
   });

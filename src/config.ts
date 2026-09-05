@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { parseJsonc } from "./jsonc.ts";
 import { defaultLogFile, GLOBAL_CONFIG_NAME, globalConfigCandidates } from "./paths.ts";
 import type { CliOverrides, LightServerConfig, ResolvedConfig } from "./types.ts";
 
@@ -11,18 +12,15 @@ export function starterConfigTemplate(): string {
   return `// LightServer global config (created automatically on first run with no config).
 // Merge order: defaults < this file < ./lightserver.config.ts < -c file < CLI flags.
 // Prefer absolute paths here: relative paths resolve against the startup cwd.
-export default {
-  // port: 5600,
-  // host: "127.0.0.1",
-  sites: {
-    default: {
-      root: "/srv/websites/example.com",
-      // routes: [
-      //   { match: "/api", root: "/srv/websites/example.com/api" },
-      // ],
-    },
-  },
-};
+{
+  // "port": 5600,
+  // "host": "127.0.0.1",
+  "sites": {
+    "default": {
+      "root": "/srv/websites/example.com"
+    }
+  }
+}
 `;
 }
 
@@ -93,6 +91,14 @@ async function importConfigFile(
 ): Promise<{ config: Partial<LightServerConfig>; file: string }> {
   const found = await resolveConfigVariant(absPath);
   if (!found) return { config: {}, file: "" };
+  if (found.endsWith(".jsonc") || found.endsWith(".json")) {
+    const text = await fs.promises.readFile(found, "utf8");
+    const parsed = parseJsonc(text, found);
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error(`Invalid config in ${found}: top level must be an object`);
+    }
+    return { config: parsed as Partial<LightServerConfig>, file: found };
+  }
   reloadCounter++;
   const url = pathToFileURL(found).href + `?lightserver=${reloadCounter}`;
   const mod = await import(url);

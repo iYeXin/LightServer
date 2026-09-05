@@ -182,16 +182,19 @@ import type { ServiceContext } from '@iyexin/lightserver';
 
 ## 配置参考
 
-配置文件为 TypeScript（`export default` 导出对象即可，同名 `.js`/`.mjs` 也可）。
+全局配置是 JSONC（带注释的 JSON，方便其他程序读写），项目本地与 `-c` 指定文件是
+TypeScript（`export default` 导出对象即可，同名 `.js`/`.mjs` 也可；`-c` 也接受
+`.jsonc`/`.json`）。只有 TS 配置能定义函数（如 `preProcess`），JSONC 里只能放数据。
+
 项目本地配置为当前目录 `lightserver.config.ts`，另可用 `-c/--config` 指定显式文件。
 
 全局配置与默认日志集中存放在平台数据目录，可用 `LIGHTSERVER_DATA_DIR` 环境变量覆盖：
 
-| 平台    | 数据目录                          | 全局配置                                            | 默认日志                                     |
+| 平台    | 数据目录                          | 全局配置                                          | 默认日志                                     |
 | ------- | --------------------------------- | --------------------------------------------------- | -------------------------------------------- |
-| Linux   | `/etc/lightserver/`               | `/etc/lightserver/lightserver.config.ts`            | `/etc/lightserver/lightserver.log`           |
-| macOS   | `~/.lightserver/`                 | `~/.lightserver/lightserver.config.ts`              | `~/.lightserver/lightserver.log`             |
-| Windows | `%USERPROFILE%\.lightserver\`     | `%USERPROFILE%\.lightserver\lightserver.config.ts`  | `%USERPROFILE%\.lightserver\lightserver.log` |
+| Linux   | `/etc/lightserver/`               | `/etc/lightserver/lightserver.jsonc`                | `/etc/lightserver/lightserver.log`           |
+| macOS   | `~/.lightserver/`                 | `~/.lightserver/lightserver.jsonc`                  | `~/.lightserver/lightserver.log`             |
+| Windows | `%USERPROFILE%\.lightserver\`     | `%USERPROFILE%\.lightserver\lightserver.jsonc`      | `%USERPROFILE%\.lightserver\lightserver.log` |
 
 旧版 `~/.lightserver.config.ts` 仍作为回退读取（平台路径优先）。
 注意 Linux 数据目录通常需要 root 写入：建议以 root 运行，或预建目录并授权；
@@ -238,24 +241,24 @@ import type { ServiceContext } from '@iyexin/lightserver';
 | `root`        | `string`  | 该规则的目录（相对路径按启动 cwd 解析）                           |
 | `stripPrefix` | `boolean` | 纯前缀匹配时剥离前缀再映射文件（默认 `true`；glob/正则下忽略）    |
 
-```typescript
-// 不同路径段路由到不同目录；生产/全局配置建议绝对路径
-export default {
-  sites: {
-    default: {
-      root: '/srv/my-app/public',
-      routes: [
-        { match: '/', root: '/srv/my-app/public' },
-        { match: '/api', root: '/srv/my-app/api' },
-        { match: '/dl/*.zip', root: '/srv/my-app/downloads' },
-        { match: '~^/api/v\\d+/', root: '/srv/my-app/api' },
-      ],
-    },
-  },
-};
+```jsonc
+// 全局配置示例（lightserver.jsonc）：不同路径段路由到不同目录，生产环境用绝对路径
+{
+  "sites": {
+    "default": {
+      "root": "/srv/my-app/public",
+      "routes": [
+        { "match": "/", "root": "/srv/my-app/public" },
+        { "match": "/api", "root": "/srv/my-app/api" },
+        { "match": "/dl/*.zip", "root": "/srv/my-app/downloads" },
+        { "match": "~^/api/v\\d+/", "root": "/srv/my-app/api" }
+      ]
+    }
+  }
+}
 ```
 
-**多域名示例**：
+**多域名示例**（项目本地 TS 配置）：
 
 ```typescript
 export default {
@@ -266,7 +269,7 @@ export default {
 };
 ```
 
-**预处理中间件示例**：
+**预处理中间件示例**（仅 TS 配置支持函数）：
 
 ```typescript
 export default {
