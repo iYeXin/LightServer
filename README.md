@@ -191,14 +191,14 @@ TS 中可内联函数也可声明路径。
 
 全局配置与默认日志集中存放在平台数据目录，可用 `LIGHTSERVER_DATA_DIR` 环境变量覆盖：
 
-| 平台    | 数据目录                      | 全局配置                                       | 默认日志                                     |
-| ------- | ----------------------------- | ---------------------------------------------- | -------------------------------------------- |
-| Linux   | `/etc/lightserver/`           | `/etc/lightserver/lightserver.jsonc`           | `/etc/lightserver/lightserver.log`           |
-| macOS   | `~/.lightserver/`             | `~/.lightserver/lightserver.jsonc`             | `~/.lightserver/lightserver.log`             |
-| Windows | `%USERPROFILE%\.lightserver\` | `%USERPROFILE%\.lightserver\lightserver.jsonc` | `%USERPROFILE%\.lightserver\lightserver.log` |
+| 平台    | 数据目录                      | 全局配置                                       | 默认日志                                        |
+| ------- | ----------------------------- | ---------------------------------------------- | ----------------------------------------------- |
+| Linux   | `/etc/lightserver/`           | `/etc/lightserver/lightserver.jsonc`           | `/var/log/lightserver/lightserver.log`          |
+| macOS   | `~/.lightserver/`             | `~/.lightserver/lightserver.jsonc`             | `/var/log/lightserver/lightserver.log`          |
+| Windows | `%USERPROFILE%\.lightserver\` | `%USERPROFILE%\.lightserver\lightserver.jsonc` | `%USERPROFILE%\.lightserver\lightserver.log`    |
 
 旧版 `~/.lightserver.config.ts` 仍作为回退读取（平台路径优先）。
-注意 Linux 数据目录通常需要 root 写入：建议以 root 运行，或预建目录并授权；
+注意 Linux/macOS 的数据与日志目录通常需要 root 写入：建议以 root 运行，或预建目录并授权；
 建目录失败时启动打 warn，日志回退到 stderr。
 
 | 字段                 | 类型                                       | 默认值                           | 说明                             |
@@ -351,7 +351,7 @@ WantedBy=multi-user.target
 ```bash
 systemctl enable --now lightserver
 curl http://127.0.0.1:5600/
-tail -f /etc/lightserver/lightserver.log
+tail -f /var/log/lightserver/lightserver.log
 ```
 
 ## 日志

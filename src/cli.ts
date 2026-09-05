@@ -1,6 +1,7 @@
+import path from "node:path";
 import { hasAnyConfigFile, maybeCreateStarterConfig, resolveConfig } from "./config.ts";
 import { configureLogging } from "./logger.ts";
-import { dataDir, defaultLogFile, ensureDataDir, globalConfigCandidates } from "./paths.ts";
+import { dataDir, defaultLogFile, ensureDataDir, ensureDir, globalConfigCandidates } from "./paths.ts";
 import { startServer } from "./server.ts";
 import type { CliOverrides } from "./types.ts";
 import type { LogLevel } from "./logger.ts";
@@ -215,6 +216,12 @@ export async function main(argv: string[]): Promise<void> {
     maxFiles: loaded.config.logMaxFiles,
     flushIntervalMs: loaded.config.logFlushIntervalMs,
   });
+  const logDirError = await ensureDir(path.dirname(loaded.config.logFile));
+  if (logDirError) {
+    process.stderr.write(
+      `Warning: cannot create log dir ${path.dirname(loaded.config.logFile)}: ${logDirError} (logging falls back to stderr)\n`,
+    );
+  }
   try {
     const handle = await startServer({
       cwd,

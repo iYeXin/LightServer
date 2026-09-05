@@ -20,6 +20,19 @@ describe("dataDir", () => {
     expect(defaultLogFile()).toBe(path.join("tmp", "custom-ls", "lightserver.log"));
   });
 
+  test("platform defaults: config in data dir, logs in /var/log (except Windows)", async () => {
+    const os = await import("node:os");
+    const path = await import("node:path");
+    delete process.env[DATA_DIR_ENV];
+    if (process.platform === "win32") {
+      expect(defaultLogFile()).toBe(
+        path.join(os.homedir(), ".lightserver", "lightserver.log"),
+      );
+    } else {
+      expect(defaultLogFile()).toBe("/var/log/lightserver/lightserver.log");
+    }
+  });
+
   test("platform default", () => {
     delete process.env[DATA_DIR_ENV];
     const dir = dataDir();

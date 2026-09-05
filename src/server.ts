@@ -476,6 +476,7 @@ export async function startServer(opts: StartOptions): Promise<ServerHandle> {
     port: config.port,
     loopback: wantsUnixSocket() ? "unix-socket" : "tcp-loopback",
     logFile: config.logFile,
+    configFiles: configFiles.length > 0 ? configFiles : "(none: built-in defaults)",
     sites: [...sites.values()].map((s) => ({
       name: s.name,
       host: s.hostPattern ?? "(default)",

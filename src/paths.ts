@@ -27,13 +27,26 @@ export function globalConfigCandidates(): string[] {
 }
 
 export function defaultLogFile(): string {
-  return path.join(dataDir(), DEFAULT_LOG_NAME);
+  return path.join(defaultLogDir(), DEFAULT_LOG_NAME);
 }
 
-/** Best-effort mkdir (Linux /usr/share needs root); null on success. */
+/** Linux/macOS: /var/log/lightserver ; Windows: ~/.lightserver. */
+export function defaultLogDir(): string {
+  const override = process.env[DATA_DIR_ENV]?.trim();
+  if (override) return override;
+  if (process.platform === "win32") return path.join(os.homedir(), ".lightserver");
+  return path.join(path.sep, "var", "log", "lightserver");
+}
+
+/** Best-effort mkdir (system dirs need root); null on success. */
 export async function ensureDataDir(): Promise<string | null> {
+  return ensureDir(dataDir());
+}
+
+/** Best-effort mkdir; null on success, error message otherwise. */
+export async function ensureDir(dir: string): Promise<string | null> {
   try {
-    await fs.promises.mkdir(dataDir(), { recursive: true });
+    await fs.promises.mkdir(dir, { recursive: true });
     return null;
   } catch (e) {
     return String((e as Error)?.message ?? e);
