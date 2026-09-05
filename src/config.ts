@@ -16,7 +16,7 @@ export function starterConfigTemplate(): string {
   // "port": 5600,
   // "host": "127.0.0.1",
   "sites": {
-    "default": {
+    "config": {
       "root": "/srv/websites/example.com"
     }
   }
@@ -55,7 +55,6 @@ export const DEFAULTS = {
   logMaxBytes: 10 * 1024 * 1024,
   logMaxFiles: 5,
   logFlushIntervalMs: 1000,
-  defaultSite: "default",
   logLevel: "info" as const,
   dynamicRouting: { enabled: true, maxDepth: 5 },
   staticExtensions: [
@@ -166,7 +165,6 @@ export function withDefaults(
     drainTimeout: partial.drainTimeout ?? DEFAULTS.drainTimeout,
     requestTimeout: partial.requestTimeout ?? DEFAULTS.requestTimeout,
     staticExtensions: [...(partial.staticExtensions ?? DEFAULTS.staticExtensions)],
-    defaultSite: partial.defaultSite ?? DEFAULTS.defaultSite,
     routeCacheTtl: partial.routeCacheTtl ?? DEFAULTS.routeCacheTtl,
     routeCacheSize: partial.routeCacheSize ?? DEFAULTS.routeCacheSize,
     sites: { ...(partial.sites ?? {}) },
@@ -183,7 +181,8 @@ export function withDefaults(
   };
 }
 
-export function validateConfig(config: ResolvedConfig): void {  if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535) {
+export function validateConfig(config: ResolvedConfig): void {
+  if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535) {
     throw new Error(`Invalid port: ${config.port}`);
   }
   if (!Number.isInteger(config.maxProcesses) || config.maxProcesses < 1) {
@@ -210,9 +209,12 @@ export function validateConfig(config: ResolvedConfig): void {  if (!Number.isIn
   if (!Number.isFinite(config.logFlushIntervalMs) || config.logFlushIntervalMs < 100) {
     throw new Error(`Invalid logFlushIntervalMs (min 100): ${config.logFlushIntervalMs}`);
   }
-  if (!config.sites[config.defaultSite] && Object.keys(config.sites).length > 0) {
+  const hostless = Object.entries(config.sites)
+    .filter(([, site]) => !site.host)
+    .map(([name]) => name);
+  if (hostless.length > 1) {
     throw new Error(
-      `defaultSite "${config.defaultSite}" is not defined in sites (${Object.keys(config.sites).join(", ")})`,
+      `at most one site may omit host (ambiguous catch-all): ${hostless.join(", ")}`,
     );
   }
   if (Object.keys(config.sites).length === 0) {

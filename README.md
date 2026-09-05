@@ -104,7 +104,7 @@ lightserver start -f         # 前台运行（容器、systemd、调试用）
 
 ### 路由解析
 
-1. 按 `Host` 头匹配站点（端口号忽略；精确 > 通配 `*.example.com` > 正则 `~`；无匹配用默认站点）。
+1. 按 `Host` 头匹配站点（端口号忽略；精确 > 通配 `*.example.com` > 正则 `~`；都不命中则走未写 `host` 的兜底站点，没有兜底则 404）。
 2. 在站点内按最长匹配选一条 `routes` 规则，得到文件系统根目录与查找路径；无规则则用站点根目录。
 3. **精确匹配优先**：目录先找 `index.html`，再找带 `:main` 标记的 `index.ts`；文件检查标记与扩展名；无扩展名路径依次试 `<path>.ts`（入口服务）、`<path>.html`。
 4. **动态前缀回退**：精确未命中时，向上逐级查找带 `:main` 标记的 `(name).ts`
@@ -167,7 +167,7 @@ import type { ServiceContext } from '@iyexin/lightserver';
 | 情况                              | 状态码 |
 | --------------------------------- | ------ |
 | 处理函数抛错 / 返回非 `Response`  | 500    |
-| 未注册处理函数、无匹配            | 404    |
+| 未注册处理函数、无匹配（路径或 Host） | 404    |
 | `serviceOptions` 超约 8KB 上限    | 500    |
 | 子进程启动失败 / 连接中断         | 502    |
 | 服务处理超时                      | 504    |
@@ -219,7 +219,6 @@ TS 中可内联函数也可声明路径。
 | `logMaxFiles`        | `number`                                   | `5`                              | 保留 `logFile.1..N`（≤0 不轮转） |
 | `logFlushIntervalMs` | `number`                                   | `1000`                           | 日志异步刷盘间隔毫秒             |
 | `staticExtensions`   | `string[]`                                 | 见上                             | 静态扩展名白名单                 |
-| `defaultSite`        | `string`                                   | `'default'`                      | 默认站点名                       |
 | `sites`              | `Record<string, SiteConfig>`               | 无                               | 多站点配置                       |
 | `preProcess`         | 函数 \| 路径                               | 无                               | 全局预处理中间件，见下           |
 | `dynamicRouting`     | `{ enabled?: boolean; maxDepth?: number }` | `{ enabled: true, maxDepth: 5 }` | 动态路由设置                     |
@@ -249,7 +248,7 @@ TS 中可内联函数也可声明路径。
 // 全局配置示例（lightserver.jsonc）：不同路径段路由到不同目录，生产环境用绝对路径
 {
   "sites": {
-    "default": {
+    "example": {
       "root": "/srv/my-app/public",
       "routes": [
         { "match": "/", "root": "/srv/my-app/public" },
@@ -267,7 +266,7 @@ TS 中可内联函数也可声明路径。
 ```typescript
 export default {
   sites: {
-    default: { host: 'example.com', root: './public' },
+    example: { host: 'example.com', root: './public' },
     api: { host: 'api.example.com', root: './api' },
   },
 };

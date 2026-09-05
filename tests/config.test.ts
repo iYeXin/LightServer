@@ -54,6 +54,20 @@ describe("validateConfig", () => {
       validateConfig(withDefaults({ sites: { default: {} as never } })),
     ).toThrow(/must define an explicit root/);
   });
+  test("rejects multiple host-less sites", () => {
+    expect(() =>
+      validateConfig(
+        withDefaults({ sites: { a: { root: "/a" }, b: { root: "/b" } } }),
+      ),
+    ).toThrow(/at most one site may omit host/);
+  });
+  test("accepts one host-less catch-all alongside hosted sites", () => {
+    expect(() =>
+      validateConfig(
+        withDefaults({ sites: { a: { root: "/a" }, b: { root: "/b", host: "b.test" } } }),
+      ),
+    ).not.toThrow();
+  });
 });
 
 describe("hasAnyConfigFile", () => {
@@ -170,7 +184,7 @@ describe("maybeCreateStarterConfig", () => {
         any
       >;
       expect(parsed).toEqual({
-        sites: { default: { root: "/srv/websites/example.com" } },
+        sites: { config: { root: "/srv/websites/example.com" } },
       });
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });

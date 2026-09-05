@@ -87,7 +87,6 @@ export interface LightServerConfig {
   /** Async log flush cadence in ms. Default 1000. */
   logFlushIntervalMs?: number;
   staticExtensions?: string[];
-  defaultSite?: string;
   sites?: Record<string, SiteConfig>;
   /**
    * Inline function (TS configs) or module path (JSONC, or TS referencing
@@ -107,7 +106,6 @@ export interface ResolvedConfig {
   drainTimeout: number;
   requestTimeout: number;
   staticExtensions: string[];
-  defaultSite: string;
   routeCacheTtl: number;
   routeCacheSize: number;
   logFile: string;

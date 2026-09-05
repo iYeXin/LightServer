@@ -101,7 +101,7 @@ function compileSites(config: ResolvedConfig, cwd: string): Map<string, Compiled
   return out;
 }
 
-function matchSite(sites: Map<string, CompiledSite>, host: string, defaultSite: string): CompiledSite {
+function matchSite(sites: Map<string, CompiledSite>, host: string): CompiledSite | null {
   let best: CompiledSite | null = null;
   let bestScore = -1;
   for (const site of sites.values()) {
@@ -114,7 +114,11 @@ function matchSite(sites: Map<string, CompiledSite>, host: string, defaultSite: 
     }
   }
   if (best) return best;
-  return sites.get(defaultSite) ?? [...sites.values()][0];
+  // Catch-all: the single host-less site (validation guarantees at most one).
+  for (const site of sites.values()) {
+    if (!site.hostPattern) return site;
+  }
+  return null;
 }
 
 function pickRoute(site: CompiledSite, pathname: string): CompiledRoute | null {
@@ -373,7 +377,11 @@ export async function startServer(opts: StartOptions): Promise<ServerHandle> {
       }
 
       const host = normalizeHost(req.headers.get("host"));
-      const site = matchSite(sites, host, config.defaultSite);
+      const site = matchSite(sites, host);
+      if (!site) {
+        status = 404;
+        return new Response("not found", { status });
+      }
       siteName = site.name;
 
       if ((req.headers.get("upgrade") ?? "").toLowerCase() === "websocket") {
