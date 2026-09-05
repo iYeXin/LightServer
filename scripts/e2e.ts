@@ -97,7 +97,7 @@ export default async function init(ctx: any) {
   );
 
   const serverPath = path.resolve(import.meta.dir, "..", "bin", "lightserver.ts");
-  const proc = Bun.spawn([process.execPath, serverPath, "start", "--port", String(PORT)], {
+  const proc = Bun.spawn([process.execPath, serverPath, "start", "--foreground", "--port", String(PORT)], {
     cwd: dir,
     stdout: "inherit",
     stderr: "inherit",

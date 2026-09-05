@@ -87,9 +87,12 @@ export default async function init(ctx: ServiceContext) {
 ### 3. 启动
 
 ```bash
-lightserver start                          # 生产模式
-lightserver dev                            # 开发模式：配置热重载 + debug 日志 + 不缓存路由
-lightserver start -c ./prod.config.ts --port 8080
+lightserver start            # 后台常驻（终端可退出），用 stop/restart 管理
+lightserver status           # 查看是否在运行
+lightserver stop             # 优雅停止
+lightserver restart          # 重启（可带新参数替换上次的）
+lightserver dev              # 开发模式：前台运行、配置热重载、不缓存路由
+lightserver start -f         # 前台运行（容器、systemd、调试用）
 ```
 
 默认监听 `127.0.0.1:5600`。无 `-c` 且全局数据目录尚无配置文件时，
@@ -290,27 +293,35 @@ export default (req, { site, pathname }) => {
 
 ## 命令行
 
-`start` 与 `dev` 共享全部选项，区别仅在于运行模式（见下节）。
+`start`（含 `-f` 前台模式）与 `dev` 共享服务选项；`stop`/`status` 无选项，
+`restart` 可带与 `start` 相同的选项以替换上次启动参数。
 
 ```
-lightserver start [options]
-lightserver dev [options]
+lightserver start [options]     # 后台常驻，终端可退出
+lightserver stop                # 优雅停止后台进程
+lightserver restart [options]   # 重启；带参数时替换上次的启动参数
+lightserver status              # 查看后台进程是否在运行
+lightserver dev [options]       # 前台开发模式
 ```
 
-| 选项                    | 说明                             |
-| ----------------------- | -------------------------------- |
-| `-c, --config <path>`   | 显式配置文件（覆盖自动发现）     |
-| `-p, --port <n>`        | 监听端口（默认 5600）            |
-| `-H, --host <addr>`     | 监听地址（默认 127.0.0.1）       |
-| `--max-processes <n>`   | 全局进程池上限（默认 10）        |
-| `--idle-timeout <s>`    | 空闲淘汰秒数（默认 300）         |
-| `--drain-timeout <s>`   | 排水等待秒数（默认 10）          |
-| `--request-timeout <s>` | 服务请求超时秒数（默认 30）      |
-| `--log-level <level>`   | debug \| info \| warn \| error   |
-| `--log-file <path>`     | 日志文件（默认见上表 `logFile`） |
-| `-v, --verbose`         | 等价于 `--log-level debug`       |
-| `-h, --help`            | 帮助                             |
-| `-V, --version`         | 版本                             |
+| 选项                    | 说明                                    |
+| ----------------------- | --------------------------------------- |
+| `-f, --foreground`      | 只用于 `start`：前台运行，不 daemon 化  |
+| `-c, --config <path>`   | 显式配置文件（覆盖自动发现）            |
+| `-p, --port <n>`        | 监听端口（默认 5600）                   |
+| `-H, --host <addr>`     | 监听地址（默认 127.0.0.1）              |
+| `--max-processes <n>`   | 全局进程池上限（默认 10）               |
+| `--idle-timeout <s>`    | 空闲淘汰秒数（默认 300）                |
+| `--drain-timeout <s>`   | 排水等待秒数（默认 10）                 |
+| `--request-timeout <s>` | 服务请求超时秒数（默认 30）             |
+| `--log-level <level>`   | debug \| info \| warn \| error          |
+| `--log-file <path>`     | 日志文件（默认见上表 `logFile`）        |
+| `-v, --verbose`         | 等价于 `--log-level debug`              |
+| `-h, --help`            | 帮助                                    |
+| `-V, --version`         | 版本                                    |
+
+启停状态记在数据目录的 `lightserver.pid` 里；`stop` 先走令牌保护的本地关闭通道，
+再按需升级到信号，`dev` 启动的前台进程不受 `stop`/`status` 管理。
 
 ## 开发模式
 
@@ -323,13 +334,18 @@ lightserver dev --port 5600
 
 ## 后台运行
 
-`lightserver start` 是前台常驻进程（启动后只打印一行提示，其余日志进文件），
-生产环境用 systemd 托管：
+`lightserver start` 默认即后台常驻：前端只负责拉起后端进程并确认就绪，
+终端退出不影响运行（POSIX 下子进程免疫 SIGHUP，stdio 均不占终端）。
+日常启停直接用 CLI，被 `stop` 杀掉的进程会先走优雅排水：
 
 ```bash
-# 一次性后台运行
-nohup lightserver start > /tmp/lightserver.out 2>&1 &
+lightserver start
+lightserver status
+lightserver restart --port 8080   # 带参数重启：用新参数替换上次的
+lightserver stop
 ```
+
+容器或 systemd 这类自己负责守护的场景，用前台模式：
 
 ```ini
 # /etc/systemd/system/lightserver.service
@@ -341,7 +357,7 @@ After=network.target
 Type=simple
 User=www-data
 WorkingDirectory=/srv/my-app
-ExecStart=/root/.bun/bin/lightserver start
+ExecStart=/root/.bun/bin/lightserver start --foreground
 Restart=on-failure
 
 [Install]

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseArgs } from "../src/cli.ts";
+import { parseArgs } from "../src/args.ts";
 
 describe("parseArgs", () => {
   test("shared flags for start and dev", () => {
@@ -24,5 +24,15 @@ describe("parseArgs", () => {
     expect(parseArgs(["serve"]).error).toMatch(/Unknown command/);
     expect(parseArgs(["start", "--nope"]).error).toMatch(/Unknown option/);
     expect(parseArgs(["start", "--port", "abc"]).error).toMatch(/Invalid --port/);
+  });
+
+  test("daemon commands and foreground flag", () => {
+    expect(parseArgs(["stop"]).command).toBe("stop");
+    expect(parseArgs(["restart"]).command).toBe("restart");
+    expect(parseArgs(["status"]).command).toBe("status");
+    expect(parseArgs(["start", "-f"]).foreground).toBe(true);
+    expect(parseArgs(["start", "--foreground", "--port", "1"]).foreground).toBe(true);
+    expect(parseArgs(["dev", "-f"]).error).toMatch(/--foreground/);
+    expect(parseArgs(["stop", "--port", "1"]).command).toBe("stop");
   });
 });

@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import type { LoadedConfig } from "./config.ts";
@@ -351,6 +352,26 @@ export async function startServer(opts: StartOptions): Promise<ServerHandle> {
     let routeLabel = "";
     try {
       const url = new URL(req.url);
+
+      // Local control channel for `lightserver stop`. Token-gated and
+      // indistinguishable from a 404 without it; disabled when the server
+      // was not launched as a managed daemon.
+      const controlToken = process.env.LIGHTSERVER_CONTROL_TOKEN ?? "";
+      if (controlToken && req.method === "POST" && url.pathname === "/__lightserver_shutdown__") {
+        const got = req.headers.get("x-lightserver-token") ?? "";
+        const ok =
+          got.length === controlToken.length &&
+          got.length > 0 &&
+          timingSafeEqual(Buffer.from(got), Buffer.from(controlToken));
+        if (!ok) {
+          status = 404;
+          return new Response("not found", { status });
+        }
+        status = 202;
+        setTimeout(() => onSignal(), 100);
+        return new Response("shutting down", { status });
+      }
+
       const host = normalizeHost(req.headers.get("host"));
       const site = matchSite(sites, host, config.defaultSite);
       siteName = site.name;
