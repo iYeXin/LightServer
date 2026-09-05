@@ -200,6 +200,19 @@ describe("maybeCreateStarterConfig", () => {
         any
       >;
       expect(parsed).toEqual({
+        port: 5600,
+        host: "127.0.0.1",
+        maxProcesses: 10,
+        idleTimeout: 300,
+        drainTimeout: 10,
+        requestTimeout: 30,
+        routeCacheTtl: 60,
+        routeCacheSize: 2000,
+        logLevel: "info",
+        logMaxBytes: 10485760,
+        logMaxFiles: 5,
+        logFlushIntervalMs: 1000,
+        dynamicRouting: { enabled: true, maxDepth: 5 },
         sites: { example: { hosts: ["example.com"], root: "/srv/websites/example.com" } },
       });
     } finally {

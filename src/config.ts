@@ -7,18 +7,32 @@ import type { CliOverrides, LightServerConfig, ResolvedConfig } from "./types.ts
 
 export const LOCAL_CONFIG_NAME = "lightserver.config.ts";
 
-/** Starter template: one working example site; edit paths to deploy. */
+/** Starter template: common fields at built-in defaults plus one working example site. */
 export function starterConfigTemplate(): string {
   return `// LightServer global config (created automatically on first run with no config).
 // Merge order: defaults < this file < ./lightserver.config.ts < -c file < CLI flags.
 // Prefer absolute paths here: relative paths resolve against the startup cwd.
+// Values below equal the built-in defaults; edit or delete freely.
 {
-  // "port": 5600,
-  // "host": "127.0.0.1",
+  "port": 5600,
+  "host": "127.0.0.1",
+  "maxProcesses": 10,
+  "idleTimeout": 300,
+  "drainTimeout": 10,
+  "requestTimeout": 30,
+  "routeCacheTtl": 60,
+  "routeCacheSize": 2000,
+  "logLevel": "info",
+  "logMaxBytes": 10485760,
+  "logMaxFiles": 5,
+  "logFlushIntervalMs": 1000,
+  "dynamicRouting": { "enabled": true, "maxDepth": 5 },
+  // "preProcess": "./middleware.ts",
   "sites": {
     "example": {
       "hosts": ["example.com"],
       "root": "/srv/websites/example.com"
+      // "routes": [{ "match": "/api", "root": "/srv/websites/example.com/api" }]
     }
   }
 }
@@ -26,7 +40,7 @@ export function starterConfigTemplate(): string {
 }
 
 /**
- * Scaffold <dataDir>/lightserver.config.ts when no global config exists
+ * Scaffold <dataDir>/lightserver.jsonc when no global config exists
  * (and no -c was given). Best-effort: returns the created path, or null
  * when skipped/failed (never throws).
  */
