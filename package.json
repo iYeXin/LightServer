@@ -1,0 +1,55 @@
+{
+  "name": "lightserver",
+  "version": "0.1.0",
+  "description": "Lightweight file-routed service deploy tool on Bun",
+  "type": "module",
+  "bin": {
+    "lightserver": "./bin/lightserver.ts"
+  },
+  "exports": {
+    ".": "./src/service-types.ts",
+    "./types": "./src/service-types.ts",
+    "./package.json": "./package.json"
+  },
+  "types": "./src/service-types.ts",
+  "scripts": {
+    "start": "bun ./bin/lightserver.ts start",
+    "dev": "bun ./bin/lightserver.ts dev",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "e2e": "bun ./scripts/e2e.ts",
+    "prepublishOnly": "bun test && tsc --noEmit"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "license": "MIT",
+  "author": "iYeXin",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iYeXin/LightServer.git"
+  },
+  "homepage": "https://github.com/iYeXin/LightServer#readme",
+  "bugs": {
+    "url": "https://github.com/iYeXin/LightServer/issues"
+  },
+  "keywords": [
+    "bun",
+    "server",
+    "file-router",
+    "static-server",
+    "deploy",
+    "typescript",
+    "lightweight"
+  ],
+  "files": [
+    "bin/",
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "devDependencies": {
+    "bun-types": "^1.4.2",
+    "typescript": "^7.0.2"
+  }
+}
