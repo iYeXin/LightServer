@@ -1,25 +1,25 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { defaultLogFile, globalConfigCandidates } from "./paths.ts";
+import { defaultLogFile, GLOBAL_CONFIG_NAME, globalConfigCandidates } from "./paths.ts";
 import type { CliOverrides, LightServerConfig, ResolvedConfig } from "./types.ts";
 
 export const LOCAL_CONFIG_NAME = "lightserver.config.ts";
 
 /** Starter template: commented examples only, so it never changes defaults. */
-export function starterConfigTemplate(globalPath: string): string {
-  return `// LightServer project config (created automatically on first zero-config run).
-// Merge order: defaults < ${globalPath} < ./lightserver.config.ts < -c file < CLI flags.
+export function starterConfigTemplate(): string {
+  return `// LightServer global config (created automatically on first run with no config).
+// Merge order: defaults < this file < ./lightserver.config.ts < -c file < CLI flags.
+// Prefer absolute paths here: relative paths resolve against the startup cwd.
 // Uncomment what you need; everything else stays at built-in defaults.
 export default {
   // port: 5600,
   // host: "127.0.0.1",
   // sites: {
   //   default: {
-  //     root: "./public",
+  //     root: "/srv/websites/example.com",
   //     routes: [
-  //       { match: "/", root: "./public" },
-  //       { match: "/api", root: "./api" },
+  //       { match: "/", root: "/srv/websites/example.com" },
   //     ],
   //   },
   // },
@@ -28,20 +28,18 @@ export default {
 }
 
 /**
- * Scaffold ./lightserver.config.ts when starting fully zero-config
- * (no -c, no global, no local file). Best-effort: returns the created
- * path, or null when skipped/failed (never throws).
+ * Scaffold <dataDir>/lightserver.config.ts when no global config exists
+ * (and no -c was given). Best-effort: returns the created path, or null
+ * when skipped/failed (never throws).
  */
 export async function maybeCreateStarterConfig(
-  cwd: string,
-  loadedFiles: string[],
+  dir: string,
+  globalFiles: string[],
 ): Promise<string | null> {
-  if (loadedFiles.length > 0) return null;
-  const target = path.join(cwd, LOCAL_CONFIG_NAME);
+  if (globalFiles.length > 0) return null;
+  const target = path.join(dir, GLOBAL_CONFIG_NAME);
   try {
-    await fs.promises.writeFile(target, starterConfigTemplate(globalConfigCandidates()[0]), {
-      flag: "wx",
-    });
+    await fs.promises.writeFile(target, starterConfigTemplate(), { flag: "wx" });
     return target;
   } catch {
     return null;
@@ -215,6 +213,8 @@ export interface LoadedConfig {
   config: ResolvedConfig;
   /** Absolute paths of the config files that were actually loaded. */
   files: string[];
+  /** Subset of files: the global one, if any. */
+  globalFiles: string[];
 }
 
 export async function resolveConfig(opts: {
@@ -250,7 +250,7 @@ export async function resolveConfig(opts: {
   validateConfig(config);
 
   const files = [g.file, l.file, e.file].filter((f) => f !== "");
-  return { config, files };
+  return { config, files, globalFiles: g.file ? [g.file] : [] };
 }
 
 /** First existing global config wins (platform path, then legacy dotfile). */

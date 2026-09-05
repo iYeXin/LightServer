@@ -203,7 +203,7 @@ export async function main(argv: string[]): Promise<void> {
   }
 
   if (!parsed.explicitConfig) {
-    const created = await maybeCreateStarterConfig(cwd, loaded.files);
+    const created = await maybeCreateStarterConfig(dataDir(), loaded.globalFiles);
     if (created) {
       process.stdout.write(`Created starter config: ${created}\n`);
     }

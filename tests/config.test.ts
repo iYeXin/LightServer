@@ -32,7 +32,7 @@ describe("config merge", () => {
 });
 
 describe("maybeCreateStarterConfig", () => {
-  test("creates a valid no-op template when fully zero-config", async () => {
+  test("creates a valid no-op template when no global config", async () => {
     const fs = await import("node:fs");
     const os = await import("node:os");
     const path = await import("node:path");
@@ -48,13 +48,13 @@ describe("maybeCreateStarterConfig", () => {
     }
   });
 
-  test("skips when any config exists or file already there", async () => {
+  test("skips when a global config exists or file already there", async () => {
     const fs = await import("node:fs");
     const os = await import("node:os");
     const path = await import("node:path");
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ls-starter-"));
     try {
-      expect(await maybeCreateStarterConfig(dir, ["/some/global.ts"])).toBeNull();
+      expect(await maybeCreateStarterConfig(dir, ["/etc/lightserver/lightserver.config.ts"])).toBeNull();
       expect(fs.existsSync(path.join(dir, "lightserver.config.ts"))).toBe(false);
       fs.writeFileSync(path.join(dir, "lightserver.config.ts"), "export default { port: 1234 };\n");
       expect(await maybeCreateStarterConfig(dir, [])).toBeNull();

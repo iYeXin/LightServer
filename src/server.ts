@@ -65,11 +65,13 @@ export interface StartOptions {
 }
 
 function defaultRoot(cwd: string): string {
-  const pub = path.join(cwd, "public");
-  try {
-    if (fs.statSync(pub).isDirectory()) return pub;
-  } catch {
-    // fall through
+  // Preferred convention first, then the legacy ./public, then cwd itself.
+  for (const rel of [path.join("srv", "websites", "example.com"), "public"]) {
+    try {
+      if (fs.statSync(path.join(cwd, rel)).isDirectory()) return path.join(cwd, rel);
+    } catch {
+      // try next
+    }
   }
   return cwd;
 }
@@ -80,7 +82,7 @@ function compileSites(config: ResolvedConfig, cwd: string): Map<string, Compiled
   if (names.length === 0) {
     const root = defaultRoot(cwd);
     if (root === cwd) {
-      log("warn", "no sites configured and ./public missing; serving cwd as default root", { root });
+      log("warn", "no sites configured and no conventional root found; serving cwd", { root });
     }
     out.set(config.defaultSite, {
       name: config.defaultSite,
