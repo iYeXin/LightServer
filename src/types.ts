@@ -32,8 +32,16 @@ export interface RedirectRule {
 }
 
 export interface SiteConfig {
-  /** Exact (`example.com`), wildcard (`*.example.com`) or regex (`~^api\d?\.`). */
-  host?: string;
+  /**
+   * Explicit domains, e.g. `["example.com", "*.example.com", "~^api\\d+\\."]`.
+   * Every site needs `hosts` (non-empty) or a dedicated `port`.
+   */
+  hosts?: string[];
+  /**
+   * Dedicated listen port: traffic arriving on it skips Host matching.
+   * Must differ from the main listen port and be unique across sites.
+   */
+  port?: number;
   /** Site root dir (required; relative paths resolve against the process cwd). */
   root: string;
   /** Path-based routing inside this site. Longest match wins. */

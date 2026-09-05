@@ -15,6 +15,7 @@ export interface DaemonInfo {
   pid: number;
   host: string;
   port: number;
+  sitePorts: number[];
   cwd: string;
   /** Serve flags for restart (everything after the command word). */
   argv: string[];
@@ -37,7 +38,7 @@ export function readPidfile(): DaemonInfo | null {
     if (
       typeof obj.pid !== "number" || !Number.isInteger(obj.pid) || obj.pid <= 0 ||
       typeof obj.port !== "number" || typeof obj.host !== "string" ||
-      typeof obj.cwd !== "string" || !Array.isArray(obj.argv) ||
+      !Array.isArray(obj.sitePorts) || typeof obj.cwd !== "string" || !Array.isArray(obj.argv) ||
       typeof obj.token !== "string" || obj.token === "" ||
       typeof obj.startedAt !== "number"
     ) {
@@ -116,6 +117,7 @@ interface Handshake {
   ok: boolean;
   host?: string;
   port?: number;
+  sitePorts?: number[];
   error?: string;
 }
 
@@ -155,8 +157,19 @@ function readHandshake(child: ChildProcess, timeoutMs: number): Promise<Handshak
             const payload = JSON.parse(line.slice(DAEMON_READY_PREFIX.length).trim()) as {
               host: string;
               port: number;
+              sitePorts?: number[];
             };
-            done({ ok: true, host: payload.host, port: payload.port });
+            if (typeof payload.host !== "string" || typeof payload.port !== "number") {
+              throw new Error("bad handshake");
+            }
+            done({
+              ok: true,
+              host: payload.host,
+              port: payload.port,
+              sitePorts: Array.isArray(payload.sitePorts)
+                ? payload.sitePorts.filter((p) => Number.isInteger(p))
+                : [],
+            });
           } catch {
             done({ ok: false, error: "daemon sent a malformed ready handshake" });
           }
@@ -183,7 +196,7 @@ function readHandshake(child: ChildProcess, timeoutMs: number): Promise<Handshak
 export async function startDaemon(opts: {
   cwd: string;
   serveArgv: string[];
-}): Promise<{ pid: number; host: string; port: number }> {
+}): Promise<{ pid: number; host: string; port: number; sitePorts: number[] }> {
   const existing = readPidfile();
   if (existing) {
     if (isAlive(existing.pid)) {
@@ -243,6 +256,7 @@ export async function startDaemon(opts: {
     pid: child.pid,
     host: hs.host,
     port: hs.port,
+    sitePorts: hs.sitePorts ?? [],
     cwd: opts.cwd,
     argv: opts.serveArgv,
     token,
@@ -263,7 +277,7 @@ export async function startDaemon(opts: {
         : "another starter won the race; try again",
     );
   }
-  return { pid: info.pid, host: info.host, port: info.port };
+  return { pid: info.pid, host: info.host, port: info.port, sitePorts: info.sitePorts };
 }
 
 /** Graceful stop: token-gated control endpoint first, signals as fallback. */
@@ -307,7 +321,7 @@ export async function stopDaemon(): Promise<string> {
 export async function restartDaemon(opts: {
   cwd: string;
   serveArgv: string[];
-}): Promise<{ pid: number; host: string; port: number; restarted: boolean }> {
+}): Promise<{ pid: number; host: string; port: number; sitePorts: number[]; restarted: boolean }> {
   const previous = readPidfile();
   const stored = previous && isAlive(previous.pid) ? previous : null;
   await stopDaemon();
@@ -329,10 +343,11 @@ export function statusDaemon(): { running: boolean; message: string } {
     removePidfile();
     return { running: false, message: `lightserver is not running (stale pid ${info.pid} removed)` };
   }
+  const extra = info.sitePorts.length > 0 ? `, site ports ${info.sitePorts.join(", ")}` : "";
   return {
     running: true,
     message:
-      `running (pid ${info.pid}, http://${info.host}:${info.port}, ` +
+      `running (pid ${info.pid}, http://${info.host}:${info.port}${extra}, ` +
       `up ${formatUptime(Date.now() - info.startedAt)})`,
   };
 }

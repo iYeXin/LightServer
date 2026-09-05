@@ -100,9 +100,16 @@ export async function runDaemon(opts: DaemonRunOptions): Promise<void> {
       initial: loaded,
     });
     const c = handle.getConfig();
+    const sitePorts = [
+      ...new Set(
+        Object.values(c.sites)
+          .map((s) => s.port)
+          .filter((p): p is number => p !== undefined),
+      ),
+    ];
     if (child) {
       process.stdout.write(
-        `${DAEMON_READY_PREFIX} ${JSON.stringify({ host: c.host, port: c.port })}\n`,
+        `${DAEMON_READY_PREFIX} ${JSON.stringify({ host: c.host, port: c.port, sitePorts })}\n`,
       );
     } else {
       process.stdout.write(

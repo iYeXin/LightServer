@@ -14,10 +14,10 @@ describe("config merge", () => {
   test("later wins; sites merge per site; lists replace", () => {
     const merged = mergeConfigs(
       { port: 5600, sites: { a: { root: "./a" } }, staticExtensions: [".html"] },
-      { port: 8080, sites: { a: { root: "./a", host: "a.test" }, b: { root: "./b" } } },
+      { port: 8080, sites: { a: { root: "./a", hosts: ["a.test"] }, b: { root: "./b" } } },
     );
     expect(merged.port).toBe(8080);
-    expect(merged.sites?.a).toEqual({ root: "./a", host: "a.test" });
+    expect(merged.sites?.a).toEqual({ root: "./a", hosts: ["a.test"] });
     expect(merged.sites?.b).toEqual({ root: "./b" });
     expect(merged.staticExtensions).toEqual([".html"]);
   });
@@ -42,7 +42,7 @@ describe("config merge", () => {
 
 describe("validateConfig", () => {
   const base = () =>
-    withDefaults({ sites: { default: { root: "/srv/x" } } });
+    withDefaults({ sites: { default: { root: "/srv/x", hosts: ["x.test"] } } });
   test("accepts explicit roots", () => {
     expect(() => validateConfig(base())).not.toThrow();
   });
@@ -51,21 +51,37 @@ describe("validateConfig", () => {
   });
   test("rejects sites without root", () => {
     expect(() =>
-      validateConfig(withDefaults({ sites: { default: {} as never } })),
+      validateConfig(withDefaults({ sites: { default: { hosts: ["x.test"] } as never } })),
     ).toThrow(/must define an explicit root/);
   });
-  test("rejects multiple host-less sites", () => {
+  test("rejects sites with neither hosts nor port", () => {
     expect(() =>
-      validateConfig(
-        withDefaults({ sites: { a: { root: "/a" }, b: { root: "/b" } } }),
-      ),
-    ).toThrow(/at most one site may omit host/);
+      validateConfig(withDefaults({ sites: { default: { root: "/srv/x" } } })),
+    ).toThrow(/define hosts/);
   });
-  test("accepts one host-less catch-all alongside hosted sites", () => {
+  test("rejects legacy singular host", () => {
     expect(() =>
       validateConfig(
-        withDefaults({ sites: { a: { root: "/a" }, b: { root: "/b", host: "b.test" } } }),
+        withDefaults({ sites: { default: { root: "/srv/x", host: "x.test" } as never } }),
       ),
+    ).toThrow(/renamed to "hosts"/);
+  });
+  test("rejects bad host regex, dup ports, main-port collision", () => {
+    expect(() =>
+      validateConfig(withDefaults({ sites: { a: { root: "/a", hosts: ["~(bad"] } } })),
+    ).toThrow(/invalid host regex/);
+    expect(() =>
+      validateConfig(
+        withDefaults({ sites: { a: { root: "/a", port: 9001 }, b: { root: "/b", port: 9001 } } }),
+      ),
+    ).toThrow(/same port/);
+    expect(() =>
+      validateConfig(withDefaults({ port: 9002, sites: { a: { root: "/a", port: 9002 } } })),
+    ).toThrow(/collides with the main listen port/);
+  });
+  test("accepts port-only sites", () => {
+    expect(() =>
+      validateConfig(withDefaults({ sites: { a: { root: "/a", port: 9003 } } })),
     ).not.toThrow();
   });
 });
@@ -150,7 +166,7 @@ describe("preProcess module references", () => {
         path.join(data, "lightserver.jsonc"),
         `{
           // machine-managed global config
-          "sites": { "default": { "root": ${JSON.stringify(cwd)} } },
+          "sites": { "default": { "hosts": ["x.test"], "root": ${JSON.stringify(cwd)} } },
           "preProcess": "./mw.ts",
         }\n`,
       );
@@ -184,7 +200,7 @@ describe("maybeCreateStarterConfig", () => {
         any
       >;
       expect(parsed).toEqual({
-        sites: { config: { root: "/srv/websites/example.com" } },
+        sites: { config: { hosts: ["example.com"], root: "/srv/websites/example.com" } },
       });
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });

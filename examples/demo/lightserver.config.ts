@@ -4,6 +4,7 @@ export default {
   port: 5600,
   sites: {
     default: {
+      hosts: ["localhost", "127.0.0.1"],
       root: "./public",
       routes: [
         { match: "/", root: "./public" },

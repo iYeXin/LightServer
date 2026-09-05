@@ -60,6 +60,7 @@ describe("pidfile", () => {
       pid: process.pid,
       host: "127.0.0.1",
       port: 5600,
+      sitePorts: [8081],
       cwd: tmp,
       argv: ["--port", "5600"],
       token: "t",

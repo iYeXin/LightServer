@@ -17,6 +17,7 @@ export function starterConfigTemplate(): string {
   // "host": "127.0.0.1",
   "sites": {
     "config": {
+      "hosts": ["example.com"],
       "root": "/srv/websites/example.com"
     }
   }
@@ -209,14 +210,6 @@ export function validateConfig(config: ResolvedConfig): void {
   if (!Number.isFinite(config.logFlushIntervalMs) || config.logFlushIntervalMs < 100) {
     throw new Error(`Invalid logFlushIntervalMs (min 100): ${config.logFlushIntervalMs}`);
   }
-  const hostless = Object.entries(config.sites)
-    .filter(([, site]) => !site.host)
-    .map(([name]) => name);
-  if (hostless.length > 1) {
-    throw new Error(
-      `at most one site may omit host (ambiguous catch-all): ${hostless.join(", ")}`,
-    );
-  }
   if (Object.keys(config.sites).length === 0) {
     throw new Error("no sites configured: define at least one site with an explicit root");
   }
@@ -224,6 +217,41 @@ export function validateConfig(config: ResolvedConfig): void {
     if (!site || typeof site.root !== "string" || site.root.trim() === "") {
       throw new Error(`site "${name}" must define an explicit root directory`);
     }
+    if ((site as unknown as Record<string, unknown>).host !== undefined) {
+      throw new Error(`site "${name}": "host" was renamed to "hosts" (array of domains)`);
+    }
+    const hosts = site.hosts ?? [];
+    if (!Array.isArray(hosts) || hosts.some((h) => typeof h !== "string" || h === "")) {
+      throw new Error(`site "${name}": hosts must be an array of domain patterns`);
+    }
+    for (const h of hosts) {
+      if (h.startsWith("~")) {
+        try {
+          new RegExp(h.slice(1));
+        } catch {
+          throw new Error(`site "${name}": invalid host regex "${h}"`);
+        }
+      }
+    }
+    const port = site.port;
+    if (port !== undefined && (!Number.isInteger(port) || port < 1 || port > 65535)) {
+      throw new Error(`site "${name}": invalid port ${port}`);
+    }
+    if (hosts.length === 0 && port === undefined) {
+      throw new Error(`site "${name}": define hosts ([...]) or a dedicated port`);
+    }
+    if (port === config.port) {
+      throw new Error(`site "${name}": port ${port} collides with the main listen port`);
+    }
+  }
+  const claimed = new Map<number, string>();
+  for (const [name, site] of Object.entries(config.sites)) {
+    if (site.port === undefined) continue;
+    const other = claimed.get(site.port);
+    if (other !== undefined) {
+      throw new Error(`sites "${other}" and "${name}" claim the same port ${site.port}`);
+    }
+    claimed.set(site.port, name);
   }
 }
 

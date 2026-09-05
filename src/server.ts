@@ -44,10 +44,15 @@ interface CompiledRoute {
   order: number;
 }
 
+interface CompiledHost {
+  pattern: string;
+  test: (host: string) => boolean;
+}
+
 interface CompiledSite {
   name: string;
-  hostPattern?: string;
-  hostTest: ((host: string) => boolean) | null;
+  hosts: CompiledHost[];
+  port?: number;
   rootAbs: string;
   routes: CompiledRoute[];
   redirects: CompiledRedirect[];
@@ -88,8 +93,8 @@ function compileSites(config: ResolvedConfig, cwd: string): Map<string, Compiled
     });
     out.set(name, {
       name,
-      hostPattern: s.host,
-      hostTest: s.host ? compileHostPattern(s.host) : null,
+      hosts: (s.hosts ?? []).map((pattern) => ({ pattern, test: compileHostPattern(pattern) })),
+      port: s.port,
       rootAbs,
       routes,
       redirects: compileRedirects(s.redirects ?? []),
@@ -105,20 +110,16 @@ function matchSite(sites: Map<string, CompiledSite>, host: string): CompiledSite
   let best: CompiledSite | null = null;
   let bestScore = -1;
   for (const site of sites.values()) {
-    if (!site.hostTest || !site.hostPattern) continue;
-    if (!site.hostTest(host)) continue;
-    const score = hostSpecificity(site.hostPattern);
-    if (score > bestScore) {
-      bestScore = score;
-      best = site;
+    for (const h of site.hosts) {
+      if (!h.test(host)) continue;
+      const score = hostSpecificity(h.pattern);
+      if (score > bestScore) {
+        bestScore = score;
+        best = site;
+      }
     }
   }
-  if (best) return best;
-  // Catch-all: the single host-less site (validation guarantees at most one).
-  for (const site of sites.values()) {
-    if (!site.hostPattern) return site;
-  }
-  return null;
+  return best;
 }
 
 function pickRoute(site: CompiledSite, pathname: string): CompiledRoute | null {
@@ -348,7 +349,7 @@ export async function startServer(opts: StartOptions): Promise<ServerHandle> {
     return new Response(Bun.file(file), { headers });
   }
 
-  async function handle(req: Request): Promise<Response> {
+  async function handle(req: Request, fixedSite: CompiledSite | null): Promise<Response> {
     const reqId = newRequestId();
     const t0 = Date.now();
     let status = 500;
@@ -377,10 +378,12 @@ export async function startServer(opts: StartOptions): Promise<ServerHandle> {
       }
 
       const host = normalizeHost(req.headers.get("host"));
-      const site = matchSite(sites, host);
+      // Dedicated site ports skip Host matching; the main port is strict
+      // virtual-hosting: unknown hosts get 421, never a catch-all site.
+      const site = fixedSite ?? matchSite(sites, host);
       if (!site) {
-        status = 404;
-        return new Response("not found", { status });
+        status = 421;
+        return new Response("misdirected request", { status });
       }
       siteName = site.name;
 
@@ -494,11 +497,24 @@ export async function startServer(opts: StartOptions): Promise<ServerHandle> {
     }
   }
 
-  const server = Bun.serve({
-    hostname: config.host,
-    port: config.port,
-    fetch: handle,
-  });
+  const servers: Array<{ server: ReturnType<typeof Bun.serve>; port: number; site: string | null }> = [];
+  const listen = (port: number, site: CompiledSite | null) => {
+    servers.push({
+      server: Bun.serve({
+        hostname: config.host,
+        port,
+        fetch: (req) => handle(req, site),
+      }),
+      port,
+      site: site?.name ?? null,
+    });
+  };
+  listen(config.port, null);
+  for (const site of sites.values()) {
+    if (site.port !== undefined && !servers.some((s) => s.port === site.port)) {
+      listen(site.port, site);
+    }
+  }
 
   log("info", `lightserver listening (${isDev ? "dev" : "start"})`, {
     host: config.host,
@@ -508,7 +524,8 @@ export async function startServer(opts: StartOptions): Promise<ServerHandle> {
     configFiles: configFiles.length > 0 ? configFiles : "(none: built-in defaults)",
     sites: [...sites.values()].map((s) => ({
       name: s.name,
-      host: s.hostPattern ?? "(default)",
+      hosts: s.hosts.map((h) => h.pattern),
+      port: s.port ?? null,
       root: s.rootAbs,
       routes: s.routes.map((r) => `${r.match} -> ${r.rootAbs}`),
     })),
@@ -519,10 +536,12 @@ export async function startServer(opts: StartOptions): Promise<ServerHandle> {
     if (stopped) return;
     stopped = true;
     log("info", "shutting down");
-    try {
-      server.stop(true);
-    } catch {
-      // ignore
+    for (const s of servers) {
+      try {
+        s.server.stop(true);
+      } catch {
+        // ignore
+      }
     }
     for (const w of entryWatchers.values()) {
       try {

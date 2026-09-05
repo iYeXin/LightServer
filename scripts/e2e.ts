@@ -5,6 +5,8 @@ import os from "node:os";
 import path from "node:path";
 
 const PORT = 15000 + Math.floor(Math.random() * 20000);
+let PORT2 = 15000 + Math.floor(Math.random() * 20000);
+if (PORT2 === PORT) PORT2++;
 const BASE = `http://127.0.0.1:${PORT}`;
 
 let failures = 0;
@@ -28,6 +30,14 @@ async function main(): Promise<void> {
 
   write("public/index.html", "<h1>home</h1>");
   write("public/style.css", "body{color:red}");
+  write(
+    "api2/ping.ts",
+    `// @lightserver:main
+export default async function init(ctx: any) {
+  ctx.onRequest(async () => new Response("pong"));
+}
+`,
+  );
   write(
     "api/hello.ts",
     `// @lightserver:main
@@ -76,6 +86,7 @@ export default async function init(ctx: any) {
     `export default {
   sites: {
     default: {
+      hosts: ["localhost", "127.0.0.1"],
       root: "./public",
       routes: [
         { match: "/", root: "./public" },
@@ -87,13 +98,14 @@ export default async function init(ctx: any) {
         { from: "/legacy/*", to: "/api/*", status: 302 },
       ],
     },
-    apisite: { host: "api.test", root: "./api" },
+    apisite: { hosts: ["api.test"], root: "./api" },
+    portsite: { port: PORT2, root: "./api2" },
   },
   preProcess: (req: Request, info: any) => {
     if (new URL(req.url).pathname === "/blocked") return new Response("blocked", { status: 403 });
   },
 };
-`,
+`.replaceAll("PORT2", String(PORT2)),
   );
 
   const serverPath = path.resolve(import.meta.dir, "..", "bin", "lightserver.ts");
@@ -165,6 +177,14 @@ export default async function init(ctx: any) {
 
     r = await get("/hello", { host: "api.test" });
     check("host-based site root", r.status === 200 && (await r.text()) === "Hello, World!");
+
+    // Strict vhost: existing path + unknown Host is 421, never a catch-all.
+    r = await get("/api/hello", { host: "nope.test" });
+    check("unknown host is 421", r.status === 421);
+
+    // Dedicated site port skips Host matching entirely.
+    r = await fetch(`http://127.0.0.1:${PORT2}/ping`);
+    check("site port serves without domain", r.status === 200 && (await r.text()) === "pong");
 
     // streaming bodies: buffered (content-length) and chunked (stream, no length)
     r = await fetch(BASE + "/api/echo", { method: "POST", body: "stream-me" });
