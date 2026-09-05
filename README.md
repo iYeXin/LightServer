@@ -93,7 +93,7 @@ lightserver start -c ./prod.config.ts --port 8080
 ```
 
 默认监听 `127.0.0.1:5600`。配置合并顺序（后者覆盖前者）：
-内置默认值 < `~/.lightserver.config.ts`（全局） < `./lightserver.config.ts`（项目本地）
+内置默认值 < 全局配置 < `./lightserver.config.ts`（项目本地）
 < `-c/--config` 指定文件 < CLI 参数。
 
 ## 工作原理
@@ -182,8 +182,18 @@ import type { ServiceContext } from '@iyexin/lightserver';
 ## 配置参考
 
 配置文件为 TypeScript（`export default` 导出对象即可，同名 `.js`/`.mjs` 也可）。
-全局配置 `~/.lightserver.config.ts`，项目本地配置 `./lightserver.config.ts`，
-另可用 `-c/--config` 指定显式文件，合并顺序见快速开始。
+项目本地配置为当前目录 `lightserver.config.ts`，另可用 `-c/--config` 指定显式文件。
+
+全局配置与默认日志集中存放在平台数据目录，可用 `LIGHTSERVER_DATA_DIR` 环境变量覆盖：
+
+| 平台    | 数据目录                          | 全局配置                                            | 默认日志                                     |
+| ------- | --------------------------------- | --------------------------------------------------- | -------------------------------------------- |
+| Linux   | `/usr/share/lightserver/`         | `/usr/share/lightserver/lightserver.config.ts`      | `/usr/share/lightserver/lightserver.log`     |
+| Windows | `%USERPROFILE%\.lightserver\`     | `%USERPROFILE%\.lightserver\lightserver.config.ts`  | `%USERPROFILE%\.lightserver\lightserver.log` |
+
+旧版 `~/.lightserver.config.ts` 仍作为回退读取（平台路径优先）。
+注意 Linux 数据目录通常需要 root 写入：建议以 root 运行，或预建目录并授权；
+建目录失败时启动打 warn，日志回退到 stderr。
 
 | 字段                 | 类型                                       | 默认值                       | 说明                           |
 | -------------------- | ------------------------------------------ | ---------------------------- | ------------------------------ |
@@ -195,7 +205,7 @@ import type { ServiceContext } from '@iyexin/lightserver';
 | `requestTimeout`     | `number`                                   | `30`                         | 服务请求超时秒数（→ 504）      |
 | `routeCacheTtl`      | `number`                                   | `60`                         | 路由缓存秒数（0 关闭）         |
 | `routeCacheSize`     | `number`                                   | `2000`                       | 路由缓存条目上限               |
-| `logFile`            | `string`                                   | `./lightserver.log`          | 日志文件（相对路径按 cwd 解析）|
+| `logFile`            | `string`                                   | `<数据目录>/lightserver.log` | 日志文件（相对路径按 cwd 解析）|
 | `logMaxBytes`        | `number`                                   | `10485760`                   | 单文件超此字节数轮转           |
 | `logMaxFiles`        | `number`                                   | `5`                          | 保留 `logFile.1..N`（≤0 不轮转）|
 | `logFlushIntervalMs` | `number`                                   | `1000`                       | 日志异步刷盘间隔毫秒           |
@@ -284,7 +294,7 @@ lightserver dev [options]
 | `--drain-timeout <s>`   | 排水等待秒数（默认 10）                |
 | `--request-timeout <s>` | 服务请求超时秒数（默认 30）            |
 | `--log-level <level>`   | debug \| info \| warn \| error         |
-| `--log-file <path>`     | 日志文件（默认 ./lightserver.log）     |
+| `--log-file <path>`     | 日志文件（默认见上表 `logFile`）       |
 | `-v, --verbose`         | 等价于 `--log-level debug`             |
 | `-h, --help`            | 帮助                                   |
 | `-V, --version`         | 版本                                   |
@@ -328,12 +338,12 @@ WantedBy=multi-user.target
 ```bash
 systemctl enable --now lightserver
 curl http://127.0.0.1:5600/
-tail -f /srv/my-app/lightserver.log
+tail -f /usr/share/lightserver/lightserver.log
 ```
 
 ## 日志
 
-JSON 行追加到日志文件（默认 `./lightserver.log`），经内存缓冲定时异步刷盘，
+JSON 行追加到日志文件（默认平台数据目录下的 `lightserver.log`），经内存缓冲定时异步刷盘，
 单文件超限自动轮转。正常退出会刷盘；崩溃最多丢失一个刷盘间隔的日志。
 子进程的 `console.log` 归集到同一文件；`ctx.log` 与启动期诊断走 stderr。
 

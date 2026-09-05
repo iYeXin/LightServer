@@ -1,5 +1,5 @@
 // Local project config. Merge order:
-// defaults < ~/.lightserver.config.ts < ./lightserver.config.ts < -c file < CLI flags.
+// defaults < global (<dataDir>/lightserver.config.ts) < ./lightserver.config.ts < -c file < CLI flags.
 export default {
   port: 5600,
   sites: {

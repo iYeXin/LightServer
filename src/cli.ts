@@ -1,5 +1,6 @@
 import { resolveConfig } from "./config.ts";
 import { configureLogging } from "./logger.ts";
+import { dataDir, defaultLogFile, ensureDataDir, globalConfigCandidates } from "./paths.ts";
 import { startServer } from "./server.ts";
 import type { CliOverrides } from "./types.ts";
 import type { LogLevel } from "./logger.ts";
@@ -122,6 +123,8 @@ async function readVersion(): Promise<string> {
 }
 
 export function helpText(version: string): string {
+  const [primaryGlobal, ...legacyGlobals] = globalConfigCandidates();
+  const legacy = legacyGlobals.length > 0 ? ` (legacy ${legacyGlobals[0]} also read)` : "";
   return `lightserver v${version} - lightweight file-routed services on Bun
 
 Usage:
@@ -138,13 +141,13 @@ Options (shared by start and dev):
       --drain-timeout <s>   Drain wait seconds (default 10)
       --request-timeout <s> Service request timeout seconds (default 30)
       --log-level <level>   debug|info|warn|error
-      --log-file <path>     Log file (default ./lightserver.log)
+      --log-file <path>     Log file (default ${defaultLogFile()})
   -v, --verbose             Same as --log-level debug
   -h, --help                Show this help
   -V, --version             Show version
 
 Config resolution (later wins):
-  built-in defaults < ~/.lightserver.config.ts < ./lightserver.config.ts
+  built-in defaults < ${primaryGlobal}${legacy} < ./lightserver.config.ts
   < -c file < CLI flags. dev only changes the built-in log default to debug.
 
 Examples:
@@ -173,6 +176,13 @@ export async function main(argv: string[]): Promise<void> {
   const isDev = parsed.command === "dev";
   const cwd = process.cwd();
   const fallbackLogLevel: LogLevel = isDev ? "debug" : "info";
+
+  const dataDirError = await ensureDataDir();
+  if (dataDirError) {
+    process.stderr.write(
+      `Warning: cannot create data dir ${dataDir()}: ${dataDirError} (logging falls back to stderr)\n`,
+    );
+  }
 
   if (parsed.cli.port !== undefined && (!Number.isInteger(parsed.cli.port) || parsed.cli.port < 1 || parsed.cli.port > 65535)) {
     process.stderr.write("Error: --port must be an integer 1-65535\n");

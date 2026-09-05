@@ -73,7 +73,7 @@ export interface LightServerConfig {
   routeCacheTtl?: number;
   /** Max cached route verdicts. Default 2000. */
   routeCacheSize?: number;
-  /** Log file path (default ./lightserver.log). Relative resolves against cwd. */
+  /** Log file path (default <dataDir>/lightserver.log). Relative resolves against cwd. */
   logFile?: string;
   /** Rotate when the log file exceeds this many bytes. Default 10MB. */
   logMaxBytes?: number;

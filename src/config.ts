@@ -1,10 +1,9 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { defaultLogFile, globalConfigCandidates } from "./paths.ts";
 import type { CliOverrides, LightServerConfig, ResolvedConfig } from "./types.ts";
 
-export const GLOBAL_CONFIG_NAME = ".lightserver.config.ts";
 export const LOCAL_CONFIG_NAME = "lightserver.config.ts";
 
 export const DEFAULTS = {
@@ -183,11 +182,10 @@ export async function resolveConfig(opts: {
   /** Mode default for logLevel; config files and CLI still win. */
   fallbackLogLevel?: ResolvedConfig["logLevel"];
 }): Promise<LoadedConfig> {
-  const globalPath = path.join(os.homedir(), GLOBAL_CONFIG_NAME);
   const localPath = path.join(opts.cwd, LOCAL_CONFIG_NAME);
 
   const [g, l] = await Promise.all([
-    importConfigFile(globalPath),
+    importGlobalConfig(),
     importConfigFile(localPath),
   ]);
 
@@ -203,7 +201,7 @@ export async function resolveConfig(opts: {
   const merged = mergeConfigs(g.config, l.config, e.config, cliToPartial(opts.cli));
   const config = withDefaults(merged, opts.fallbackLogLevel);
   if (!config.logFile) {
-    config.logFile = path.join(opts.cwd, "lightserver.log");
+    config.logFile = defaultLogFile();
   } else if (!path.isAbsolute(config.logFile)) {
     config.logFile = path.resolve(opts.cwd, config.logFile);
   }
@@ -213,6 +211,11 @@ export async function resolveConfig(opts: {
   return { config, files };
 }
 
-export function globalConfigPath(): string {
-  return path.join(os.homedir(), GLOBAL_CONFIG_NAME);
+/** First existing global config wins (platform path, then legacy dotfile). */
+async function importGlobalConfig(): Promise<{ config: Partial<LightServerConfig>; file: string }> {
+  for (const candidate of globalConfigCandidates()) {
+    const loaded = await importConfigFile(candidate);
+    if (loaded.file) return loaded;
+  }
+  return { config: {}, file: "" };
 }

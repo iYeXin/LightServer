@@ -19,6 +19,7 @@ function check(name: string, cond: boolean, extra = ""): void {
 async function main(): Promise<void> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ls-e2e-"));
   const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), "ls-home-"));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "ls-data-")); // LIGHTSERVER_DATA_DIR
   const write = (rel: string, content: string) => {
     const abs = path.join(dir, rel);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
@@ -99,7 +100,7 @@ export default async function init(ctx: any) {
     cwd: dir,
     stdout: "inherit",
     stderr: "inherit",
-    env: { ...process.env, HOME: fakeHome, USERPROFILE: fakeHome } as Record<string, string>,
+    env: { ...process.env, HOME: fakeHome, USERPROFILE: fakeHome, LIGHTSERVER_DATA_DIR: dataDir } as Record<string, string>,
   });
 
   const get = (p: string, headers: Record<string, string> = {}) =>
@@ -213,11 +214,11 @@ export default async function init(ctx: any) {
     }
     check("mtime change replaces process", v2);
 
-    // logs go to the file (./lightserver.log), not stdout
+    // logs go to the data-dir file, not stdout
     await new Promise((r2) => setTimeout(r2, 1500));
     let logOk = false;
     try {
-      const text = fs.readFileSync(path.join(dir, "lightserver.log"), "utf8");
+      const text = fs.readFileSync(path.join(dataDir, "lightserver.log"), "utf8");
       const lines = text.trim().split("\n").map((l) => JSON.parse(l));
       logOk = lines.length > 5 && lines.some((l) => String(l.msg).startsWith("lightserver listening"));
     } catch {
@@ -238,6 +239,7 @@ export default async function init(ctx: any) {
     }
     fs.rmSync(dir, { recursive: true, force: true });
     fs.rmSync(fakeHome, { recursive: true, force: true });
+    fs.rmSync(dataDir, { recursive: true, force: true });
   }
 
   console.log(failures === 0 ? "E2E PASS" : `E2E FAIL (${failures})`);
