@@ -1,5 +1,5 @@
 // @lightserver:main
-import type { ServiceContext } from "lightserver";
+import type { ServiceContext } from "@iyexin/lightserver";
 
 export default async function init(ctx: ServiceContext) {
   const router = ctx.util.createRouter();

@@ -1,5 +1,5 @@
 {
-  "name": "lightserver",
+  "name": "@iyexin/lightserver",
   "version": "0.1.0",
   "description": "Lightweight file-routed service deploy tool on Bun",
   "type": "module",
@@ -24,6 +24,9 @@
     "bun": ">=1.0.0"
   },
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "author": "iYeXin",
   "repository": {
     "type": "git",

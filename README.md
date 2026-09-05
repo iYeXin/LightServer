@@ -19,7 +19,7 @@
 要求 [Bun](https://bun.sh) >= 1.0（运行时与安装都需要 Bun）。
 
 ```bash
-bun install -g lightserver
+bun install -g @iyexin/lightserver
 ```
 
 ## 快速开始
@@ -142,10 +142,10 @@ lightserver start -c ./prod.config.ts --port 8080
 处理函数使用 Web 标准 `Request`/`Response`。注意：同一进程服务多个请求，
 `init` 闭包捕获的 `ctx` 会在每次请求前刷新，推荐直接使用处理函数的第二个参数。
 
-类型导入（先 `bun add -d lightserver`）：
+类型导入（先 `bun add -d @iyexin/lightserver`）：
 
 ```typescript
-import type { ServiceContext } from 'lightserver';
+import type { ServiceContext } from '@iyexin/lightserver';
 ```
 
 ### 子路径路由器（实验性）

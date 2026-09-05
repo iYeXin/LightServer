@@ -1,5 +1,5 @@
 // @lightserver:main
-import type { ServiceContext } from "lightserver";
+import type { ServiceContext } from "@iyexin/lightserver";
 import { helper } from "./helper.ts";
 
 export default async function init(ctx: ServiceContext) {

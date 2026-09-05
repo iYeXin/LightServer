@@ -1,4 +1,4 @@
-// Public types for service authors (`import type { ServiceContext } from "lightserver"`).
+// Public types for service authors (`import type { ServiceContext } from "@iyexin/lightserver"`).
 // This module must stay free of Node/Bun imports so it can be used for typing only.
 
 export type RequestHandler = (
