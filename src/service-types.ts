@@ -29,7 +29,10 @@ export interface Router {
   options(pattern: string, handler: RouteHandler): Router;
   head(pattern: string, handler: RouteHandler): Router;
   all(pattern: string, handler: RouteHandler): Router;
-  use(req: Request): Promise<Response>;
+  /** Dispatch the request to the first matching route; 404 when none match. */
+  handle(req: Request): Promise<Response>;
+  /** Parse the request URL query: single keys -> string, repeats -> string[]. */
+  query(req: Request): Record<string, string | string[]>;
 }
 
 export interface ServiceContext {

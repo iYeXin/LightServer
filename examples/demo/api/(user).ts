@@ -9,6 +9,6 @@ export default async function init(ctx: ServiceContext) {
   router.put("/:id/update", async (_req, params) => new Response(`Update ${params.id}`));
 
   ctx.onRequest(async (req: Request) => {
-    return router.use(req);
+    return router.handle(req);
   });
 }
