@@ -34,7 +34,7 @@ my-app/
 ├── api/
 │   ├── hello.ts          # 入口文件（含 @lightserver:main）
 │   ├── helper.ts         # 模块文件（含 @lightserver）
-│   └── (user).ts         # 固定前缀路由入口（实验性）
+│   └── (user).ts         # 固定前缀路由入口
 └── lightserver.config.ts # 可选，项目本地配置
 ```
 
@@ -66,7 +66,7 @@ export function helper() {
 }
 ```
 
-**固定前缀路由入口**（实验性，带内部路由器）：
+**固定前缀路由入口**（带内部路由器）：
 
 ```typescript
 // api/(user).ts
@@ -104,7 +104,7 @@ lightserver start -c ./prod.config.ts --port 8080
 1. 按 `Host` 头匹配站点（端口号忽略；精确 > 通配 `*.example.com` > 正则 `~`；无匹配用默认站点）。
 2. 在站点内按最长匹配选一条 `routes` 规则，得到文件系统根目录与查找路径；无规则则用站点根目录。
 3. **精确匹配优先**：目录先找 `index.html`，再找带 `:main` 标记的 `index.ts`；文件检查标记与扩展名；无扩展名路径依次试 `<path>.ts`（入口服务）、`<path>.html`。
-4. **动态前缀回退**（实验性）：精确未命中时，向上逐级查找带 `:main` 标记的 `(name).ts`
+4. **动态前缀回退**：精确未命中时，向上逐级查找带 `:main` 标记的 `(name).ts`
   （`maxDepth` 层以内）；括号名须与对应路径段字面量一致，最深匹配优先；
    剩余路径作 `ctx.subPath`（以 `/` 开头，裸前缀时为 `/`）传入。
 
@@ -149,7 +149,7 @@ lightserver start -c ./prod.config.ts --port 8080
 import type { ServiceContext } from '@iyexin/lightserver';
 ```
 
-### 子路径路由器（实验性）
+### 子路径路由器
 
 `ctx.util.createRouter()` 创建的路由器绑定创建时的 `ctx`：有 `subPath` 时按子路径匹配，
 否则按请求完整路径匹配，因此普通入口也能用。
@@ -397,7 +397,7 @@ server {
 
 ## 限制
 
-- 无真正动态参数，只有固定前缀通配（实验性），子路径靠内部路由器解析。
+- 无真正动态参数，只有固定前缀通配，子路径靠内部路由器解析。
 - 不支持 WebSocket 升级（返回 501）。
 - 单服务进程并发受其事件循环限制，高并发请水平扩展。
 - 监听端口/地址变更需重启（其余配置 `dev` 下可热重载）。
