@@ -9,14 +9,14 @@ export const DEFAULT_LOG_NAME = "lightserver.log";
 
 /**
  * Central data dir for global config + default log file.
- * Windows: %USERPROFILE%\.lightserver ; Linux/macOS: /usr/share/lightserver.
+ * Linux: /etc/lightserver ; macOS/Windows: ~/.lightserver.
  * Overridable via LIGHTSERVER_DATA_DIR (tests, containers, non-root setups).
  */
 export function dataDir(): string {
   const override = process.env[DATA_DIR_ENV]?.trim();
   if (override) return override;
-  if (process.platform === "win32") return path.join(os.homedir(), ".lightserver");
-  return path.join(path.sep, "usr", "share", "lightserver");
+  if (process.platform === "linux") return path.join(path.sep, "etc", "lightserver");
+  return path.join(os.homedir(), ".lightserver");
 }
 
 /** New platform path first, legacy ~/.lightserver.config.ts as fallback. */

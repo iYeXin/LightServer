@@ -188,7 +188,8 @@ import type { ServiceContext } from '@iyexin/lightserver';
 
 | 平台    | 数据目录                          | 全局配置                                            | 默认日志                                     |
 | ------- | --------------------------------- | --------------------------------------------------- | -------------------------------------------- |
-| Linux   | `/usr/share/lightserver/`         | `/usr/share/lightserver/lightserver.config.ts`      | `/usr/share/lightserver/lightserver.log`     |
+| Linux   | `/etc/lightserver/`               | `/etc/lightserver/lightserver.config.ts`            | `/etc/lightserver/lightserver.log`           |
+| macOS   | `~/.lightserver/`                 | `~/.lightserver/lightserver.config.ts`              | `~/.lightserver/lightserver.log`             |
 | Windows | `%USERPROFILE%\.lightserver\`     | `%USERPROFILE%\.lightserver\lightserver.config.ts`  | `%USERPROFILE%\.lightserver\lightserver.log` |
 
 旧版 `~/.lightserver.config.ts` 仍作为回退读取（平台路径优先）。
@@ -338,7 +339,7 @@ WantedBy=multi-user.target
 ```bash
 systemctl enable --now lightserver
 curl http://127.0.0.1:5600/
-tail -f /usr/share/lightserver/lightserver.log
+tail -f /etc/lightserver/lightserver.log
 ```
 
 ## 日志

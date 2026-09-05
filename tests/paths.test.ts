@@ -23,10 +23,10 @@ describe("dataDir", () => {
   test("platform default", () => {
     delete process.env[DATA_DIR_ENV];
     const dir = dataDir();
-    if (process.platform === "win32") {
-      expect(dir.endsWith(".lightserver")).toBe(true);
+    if (process.platform === "linux") {
+      expect(dir).toBe("/etc/lightserver");
     } else {
-      expect(dir).toBe("/usr/share/lightserver");
+      expect(dir.endsWith(".lightserver")).toBe(true);
     }
   });
 
@@ -36,9 +36,9 @@ describe("dataDir", () => {
     delete process.env[DATA_DIR_ENV];
     const cands = globalConfigCandidates();
     expect(cands[0]).toBe(
-      process.platform === "win32"
-        ? path.join(os.homedir(), ".lightserver", "lightserver.config.ts")
-        : "/usr/share/lightserver/lightserver.config.ts",
+      process.platform === "linux"
+        ? "/etc/lightserver/lightserver.config.ts"
+        : path.join(os.homedir(), ".lightserver", "lightserver.config.ts"),
     );
     expect(cands[cands.length - 1]).toBe(path.join(os.homedir(), ".lightserver.config.ts"));
   });
