@@ -199,7 +199,8 @@ export async function main(argv: string[]): Promise<void> {
     maxFiles: loaded.config.logMaxFiles,
     flushIntervalMs: loaded.config.logFlushIntervalMs,
   });
-  try {    await startServer({
+  try {
+    const handle = await startServer({
       cwd,
       isDev,
       explicitConfig: parsed.explicitConfig,
@@ -207,6 +208,12 @@ export async function main(argv: string[]): Promise<void> {
       fallbackLogLevel,
       initial: loaded,
     });
+    const c = handle.getConfig();
+    // The only stdout line: everything else goes to the log file.
+    process.stdout.write(
+      `lightserver v${version} listening on http://${c.host}:${c.port} ` +
+        `(${isDev ? "dev" : "start"}; logs: ${c.logFile})\n`,
+    );
   } catch (e) {
     process.stderr.write(`Error: failed to start server: ${String((e as Error)?.message ?? e)}\n`);
     process.exit(1);

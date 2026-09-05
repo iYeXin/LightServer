@@ -298,6 +298,39 @@ lightserver dev --port 5600
 与 `start` 的区别：配置热重载（端口/地址变更仍需重启）、入口文件变更立即淘汰旧进程、
 路由缓存 bypass、默认 `debug` 日志。生产环境请用 `start`。
 
+## 后台运行
+
+`lightserver start` 是前台常驻进程（启动后只打印一行提示，其余日志进文件），
+生产环境用 systemd 托管：
+
+```bash
+# 一次性后台运行
+nohup lightserver start > /tmp/lightserver.out 2>&1 &
+```
+
+```ini
+# /etc/systemd/system/lightserver.service
+[Unit]
+Description=LightServer
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/srv/my-app
+ExecStart=/root/.bun/bin/lightserver start
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+systemctl enable --now lightserver
+curl http://127.0.0.1:5600/
+tail -f /srv/my-app/lightserver.log
+```
+
 ## 日志
 
 JSON 行追加到日志文件（默认 `./lightserver.log`），经内存缓冲定时异步刷盘，
